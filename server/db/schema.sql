@@ -46,9 +46,16 @@ CREATE TABLE IF NOT EXISTS competitions (
   country_hint TEXT,
   is_seed      INTEGER NOT NULL DEFAULT 0,
   resolved     INTEGER NOT NULL DEFAULT 0,
-  created_at   INTEGER NOT NULL
+  created_at   INTEGER NOT NULL,
+  -- Bulk-sync rotation state: which season we pull, how far through its pages we got,
+  -- and when the last complete pass finished.
+  provider_season   INTEGER,
+  sync_cursor       INTEGER NOT NULL DEFAULT 0,
+  sync_total        INTEGER,
+  last_full_sync_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_comp_resolved ON competitions(resolved);
+CREATE INDEX IF NOT EXISTS idx_comp_rotation ON competitions(resolved, last_full_sync_at);
 
 CREATE TABLE IF NOT EXISTS teams (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,7 +89,7 @@ CREATE TABLE IF NOT EXISTS matches (
   away_score       INTEGER,
   status           TEXT NOT NULL DEFAULT 'scheduled',
   season           TEXT NOT NULL,
-  round            INTEGER,
+  round            TEXT,
   is_custom        INTEGER NOT NULL DEFAULT 0,
   owner_user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
   updated_at       INTEGER NOT NULL
@@ -123,14 +130,6 @@ CREATE TABLE IF NOT EXISTS api_usage (
   remaining_reported INTEGER,
   limit_reported     INTEGER,
   updated_at         INTEGER NOT NULL
-);
-
--- final = 1 means the date is old enough that results cannot change, so never refetch it.
-CREATE TABLE IF NOT EXISTS sync_dates (
-  date           TEXT PRIMARY KEY,
-  last_synced_at INTEGER NOT NULL,
-  match_count    INTEGER NOT NULL DEFAULT 0,
-  final          INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sync_state (
