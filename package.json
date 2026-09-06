@@ -1,0 +1,26 @@
+{
+  "name": "watchsheet",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A personal football match-tracking logbook.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:web": "vite --config web/vite.config.js",
+    "build": "vite build --config web/vite.config.js",
+    "start": "cross-env NODE_ENV=production node server/index.js",
+    "migrate": "node server/db/migrate.js",
+    "seed": "node server/sync/cli.js seed",
+    "sync": "node server/sync/cli.js sync",
+    "sync:status": "node server/sync/cli.js status"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3"
+  }
+}
