@@ -1,0 +1,273 @@
+/*
+ * Design tokens, carried over unchanged from the Watchsheet design canvas.
+ *
+ * The canvas expressed interaction states as style-hover / style-focus attributes; those
+ * become the real classes below. Everything else — palette, radii, type — is verbatim, so
+ * the built app and the canvas stay comparable side by side.
+ */
+
+:root {
+  --bg: #080a09;
+  --bg2: #0d110f;
+  --card: #121715;
+  --card2: #19201d;
+  --line: #222a26;
+  --line2: #2e3833;
+  --fg: #f1f5f2;
+  --dim: #8b9792;
+  --dim2: #5f6c67;
+  --accent: #00e27a;
+  --accent-txt: #00e27a;
+  --accent-ink: #04140b;
+  --accent-soft: rgba(0, 226, 122, 0.12);
+  --neg: #ff6b6b;
+  --warn: #ffc24b;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #f2f5f3;
+  --bg2: #ffffff;
+  --card: #ffffff;
+  --card2: #edf1ee;
+  --line: #e0e6e2;
+  --line2: #cbd4ce;
+  --fg: #0b1210;
+  --dim: #5b6a64;
+  --dim2: #8a9791;
+  --accent: #00a757;
+  --accent-txt: #007a3f;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(0, 167, 87, 0.12);
+  --neg: #d93a3a;
+  --warn: #9a6b00;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  font-family: Barlow, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+a {
+  color: var(--accent-txt);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--fg);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--dim2);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line2);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+@keyframes ws-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ws-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes ws-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- interaction states (were style-hover / style-focus on the canvas) ---- */
+
+.ws-field {
+  width: 100%;
+  padding: 12px 13px;
+  border-radius: 11px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  font-size: 15px;
+  transition: border-color 0.15s ease;
+}
+.ws-field:focus {
+  border-color: var(--accent);
+}
+
+.ws-field--card {
+  background: var(--card);
+}
+
+.ws-primary {
+  border: none;
+  border-radius: 13px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: Barlow, system-ui, sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.ws-primary:hover {
+  filter: brightness(1.08);
+}
+.ws-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.ws-quiet {
+  border: none;
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.ws-quiet:hover {
+  color: var(--fg);
+}
+
+.ws-chip {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.ws-chip:hover {
+  border-color: var(--line2);
+}
+
+.ws-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  transition: background 0.12s ease;
+}
+.ws-menu-item:hover {
+  background: var(--card2);
+}
+
+.ws-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.ws-match {
+  cursor: pointer;
+}
+.ws-match:hover {
+  background: var(--card2);
+  border-color: var(--line2);
+}
+
+.ws-pop {
+  transition: transform 0.12s ease;
+}
+.ws-pop:hover {
+  transform: scale(1.08);
+}
+.ws-pop:active {
+  transform: scale(0.94);
+}
+
+.ws-dashed {
+  border: 1px dashed var(--line2);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ws-dashed:hover {
+  border-color: var(--accent);
+  color: var(--accent-txt);
+}
+
+/* Horizontal filter strips: scrollable but without a visible scrollbar. */
+.ws-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.ws-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.ws-spin {
+  animation: ws-spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-pop,
+  .ws-card,
+  .ws-primary,
+  .ws-chip {
+    transition: none;
+  }
+}
