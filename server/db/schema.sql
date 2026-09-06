@@ -132,6 +132,19 @@ CREATE TABLE IF NOT EXISTS api_usage (
   updated_at         INTEGER NOT NULL
 );
 
+-- A local copy of the provider's league catalog (~900 rows), filled page by page.
+-- Caching it means a budget stop resumes at an offset instead of restarting, and
+-- re-matching the seed list after an alias change costs nothing.
+CREATE TABLE IF NOT EXISTS provider_leagues (
+  provider_id  TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
+  country_code TEXT,
+  country_name TEXT,
+  logo_url     TEXT,
+  seasons_json TEXT,
+  fetched_at   INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sync_state (
   key   TEXT PRIMARY KEY,
   value TEXT

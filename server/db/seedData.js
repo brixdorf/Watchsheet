@@ -12,7 +12,7 @@
 
 export const SEED_COMPETITIONS = [
   { name: 'Champions League', short: 'UCL', aliases: ['UEFA Champions League'] },
-  { name: 'UEFA Super Cup', short: 'USC', aliases: ['Super Cup', 'UEFA Supercup'] },
+  { name: 'UEFA Super Cup', short: 'USC', aliases: ['UEFA Supercup'] },
   { name: 'LaLiga', short: 'LAL', aliases: ['La Liga', 'Primera Division', 'LaLiga EA Sports'], country: 'ES' },
   { name: 'Copa del Rey', short: 'CDR', aliases: ['Copa Del Rey'], country: 'ES' },
   { name: 'Supercopa de España', short: 'SCE', aliases: ['Super Cup', 'Supercopa de Espana'], country: 'ES' },

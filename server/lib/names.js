@@ -54,14 +54,19 @@ export function scoreName(seedName, aliases, candidateName) {
   const candCore = coreName(candidateName);
   if (!cand) return 0;
 
-  const wanted = [seedName, ...(aliases || [])];
-  for (const w of wanted) {
-    if (normalizeName(w) === cand) return 100;
+  // The seed's own name always outranks an alias. Aliases are broad by design — "Super
+  // Cup" is a real alias for the Italian and Spanish trophies, and every country has a
+  // competition by that literal name — so an alias must never beat an exact hit on the
+  // name we actually asked for.
+  if (normalizeName(seedName) === cand) return 100;
+  for (const w of aliases || []) {
+    if (normalizeName(w) === cand) return 95;
   }
-  for (const w of wanted) {
-    if (coreName(w) === candCore) return 90;
+  if (coreName(seedName) === candCore) return 90;
+  for (const w of aliases || []) {
+    if (coreName(w) === candCore) return 85;
   }
-  for (const w of wanted) {
+  for (const w of [seedName, ...(aliases || [])]) {
     const wc = coreName(w);
     if (!wc) continue;
     // "arsenal" vs "arsenal women" / "arsenal u21" — a prefix match on whole words only.
