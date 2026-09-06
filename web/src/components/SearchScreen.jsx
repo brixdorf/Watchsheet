@@ -1,0 +1,125 @@
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api.js';
+import { MatchRow } from './MatchRow.jsx';
+import { FilterPill, MatchGrid, Spinner } from './layout.jsx';
+
+/**
+ * Search runs against local SQLite only — it never reaches the provider, which is what
+ * keeps the free tier safe no matter how much searching happens.
+ */
+export function SearchScreen({ season, filters, onOpen, onToggle, onOpenCustom }) {
+  const [query, setQuery] = useState('');
+  const [competition, setCompetition] = useState(null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // Debounced so a fast typist makes one request, not one per keystroke.
+    const timer = setTimeout(() => {
+      setLoading(true);
+      api
+        .search({ q: query, competition, season })
+        .then((r) => {
+          if (!controller.signal.aborted) setResult(r);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false);
+        });
+    }, query ? 220 : 0);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [query, competition, season]);
+
+  const matches = result?.matches ?? [];
+
+  return (
+    <div>
+      <div style={{ position: 'relative', marginBottom: 14 }}>
+        <i
+          className="ph ph-magnifying-glass"
+          style={{ position: 'absolute', left: 15, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: 'var(--dim)' }}
+        />
+        <input
+          className="ws-field ws-field--card"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search a team, a competition, a date…"
+          aria-label="Search matches"
+          style={{ padding: '14px 14px 14px 44px', borderRadius: 14, fontSize: 15.5 }}
+        />
+      </div>
+
+      <div className="ws-strip" style={{ marginBottom: 18 }}>
+        <FilterPill active={competition === null} onClick={() => setCompetition(null)}>
+          All
+        </FilterPill>
+        {filters.customCount > 0 && (
+          <FilterPill active={competition === -1} onClick={() => setCompetition(-1)}>
+            Custom
+          </FilterPill>
+        )}
+        {filters.competitions.map((c) => (
+          <FilterPill key={c.id} active={competition === c.id} onClick={() => setCompetition(c.id)}>
+            {c.name}
+          </FilterPill>
+        ))}
+      </div>
+
+      <div
+        style={{
+          fontSize: 11,
+          letterSpacing: '.06em',
+          textTransform: 'uppercase',
+          color: 'var(--dim)',
+          marginBottom: 10,
+        }}
+      >
+        {loading
+          ? 'searching…'
+          : result?.filtered
+            ? `${matches.length} match${matches.length === 1 ? '' : 'es'} found`
+            : 'Recent matches — start typing to narrow'}
+      </div>
+
+      {loading && !result ? (
+        <Spinner label="Searching" />
+      ) : (
+        <MatchGrid>
+          {matches.map((m) => (
+            <MatchRow key={m.id} match={m} onOpen={onOpen} onToggle={onToggle} />
+          ))}
+        </MatchGrid>
+      )}
+
+      <div
+        style={{
+          marginTop: 16,
+          padding: 20,
+          border: '1px dashed var(--line2)',
+          borderRadius: 15,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 14.5 }}>Not in the database?</div>
+          <div style={{ fontSize: 13, color: 'var(--dim)' }}>
+            Friendlies, charity matches, that grainy stream — add it by hand.
+          </div>
+        </div>
+        <button type="button" className="ws-primary" onClick={onOpenCustom} style={{ padding: '11px 16px', borderRadius: 11, fontSize: 14 }}>
+          Add custom match
+        </button>
+      </div>
+    </div>
+  );
+}
