@@ -93,11 +93,18 @@ matchesRouter.get('/search', (req, res) => {
   }
 
   const limit = q || competitionId || season ? 60 : 24;
+  // Played matches first, most recent leading, then upcoming fixtures soonest-first.
+  // Searching is mostly "what did I watch", so a fixture four months out should not be
+  // the first thing you see — but it should still be findable.
+  const now = Date.now();
   const matches = queryMatches(
     uid,
     clauses.join(' AND '),
     params,
-    `ORDER BY m.kickoff_utc DESC LIMIT ${limit}`,
+    `ORDER BY (m.kickoff_utc > ${now}) ASC,
+              CASE WHEN m.kickoff_utc <= ${now} THEN m.kickoff_utc END DESC,
+              CASE WHEN m.kickoff_utc >  ${now} THEN m.kickoff_utc END ASC
+     LIMIT ${limit}`,
   );
 
   res.json({ matches, filtered: Boolean(q || competitionId || season) });
