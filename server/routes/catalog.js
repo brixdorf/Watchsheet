@@ -1,55 +1,81 @@
 import express from 'express';
-import { all, get, run } from '../db/index.js';
+import { all, get, run, tx } from '../db/index.js';
 import { requireAuth } from '../lib/session.js';
 
 export const catalogRouter = express.Router();
 catalogRouter.use(requireAuth);
 
 /**
- * The Following tab.
+ * The Following catalog.
  *
- * Only resolved seed entities appear. A seed that the provider does not carry stays out of
- * the catalog entirely rather than showing as an entry with no fixtures behind it.
+ * Everything the provider resolved is offered to everyone: the seeded list was one person's
+ * starting point, not a shared assumption, so any user can follow any team or competition we
+ * hold, at any time, without a server-side change. Ordering is by rough worldwide popularity
+ * so the names most people are looking for are the ones they see first.
+ *
+ * Following is a filter on the feed, nothing more — it never implies a match was watched.
  */
 
-catalogRouter.get('/teams', (req, res) => {
-  const uid = req.user.id;
-  res.json({
-    teams: all(
-      `SELECT t.id, t.seed_name AS name, t.short, t.color, t.logo_url AS crest,
-              t.is_national AS isNational,
-              EXISTS(SELECT 1 FROM follows f
-                      WHERE f.user_id = ? AND f.kind = 'team' AND f.entity_id = t.id) AS following,
-              (SELECT COUNT(*) FROM watch_logs wl
-                 JOIN matches m ON m.id = wl.match_id
-                WHERE wl.user_id = ? AND wl.watched = 1
-                  AND (m.home_team_id = t.id OR m.away_team_id = t.id)) AS watched
-         FROM teams t
-        WHERE t.is_seed = 1 AND t.resolved = 1
-        ORDER BY t.is_national ASC, t.seed_name COLLATE NOCASE ASC`,
-      uid,
-      uid,
-    ).map((r) => ({ ...r, following: !!r.following, isNational: !!r.isNational })),
-  });
-});
+const MAX_BULK_FOLLOWS = 200;
 
-catalogRouter.get('/competitions', (req, res) => {
+/* A seeded row keeps the requested spelling; a provider-created one has only its own name. */
+const TEAM_NAME = 'COALESCE(t.seed_name, t.name)';
+const COMP_NAME = 'COALESCE(c.seed_name, c.name)';
+
+const teamRows = (uid) =>
+  all(
+    `SELECT t.id, ${TEAM_NAME} AS name, t.short, t.color, t.logo_url AS crest,
+            t.is_national AS isNational, t.popularity, t.is_seed AS suggested,
+            EXISTS(SELECT 1 FROM follows f
+                    WHERE f.user_id = ? AND f.kind = 'team' AND f.entity_id = t.id) AS following,
+            (SELECT COUNT(*) FROM watch_logs wl
+               JOIN matches m ON m.id = wl.match_id
+              WHERE wl.user_id = ? AND wl.watched = 1
+                AND (m.home_team_id = t.id OR m.away_team_id = t.id)) AS watched
+       FROM teams t
+      WHERE t.resolved = 1
+      ORDER BY t.popularity DESC, ${TEAM_NAME} COLLATE NOCASE ASC`,
+    uid,
+    uid,
+  ).map((r) => ({
+    ...r,
+    following: !!r.following,
+    isNational: !!r.isNational,
+    suggested: !!r.suggested,
+  }));
+
+const competitionRows = (uid) =>
+  all(
+    `SELECT c.id, ${COMP_NAME} AS name, c.short, c.logo_url AS crest,
+            c.country_name AS country, c.popularity, c.is_seed AS suggested,
+            EXISTS(SELECT 1 FROM follows f
+                    WHERE f.user_id = ? AND f.kind = 'competition' AND f.entity_id = c.id) AS following,
+            (SELECT COUNT(*) FROM watch_logs wl
+               JOIN matches m ON m.id = wl.match_id
+              WHERE wl.user_id = ? AND wl.watched = 1 AND m.competition_id = c.id) AS watched
+       FROM competitions c
+      WHERE c.resolved = 1
+      ORDER BY c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
+    uid,
+    uid,
+  ).map((r) => ({ ...r, following: !!r.following, suggested: !!r.suggested }));
+
+catalogRouter.get('/teams', (req, res) => res.json({ teams: teamRows(req.user.id) }));
+
+catalogRouter.get('/competitions', (req, res) =>
+  res.json({ competitions: competitionRows(req.user.id) }),
+);
+
+/**
+ * What a new account is offered during sign-up: the ranked names only, biggest first, so the
+ * picker is a short recognisable menu rather than every side the provider has ever returned.
+ */
+catalogRouter.get('/suggestions', (req, res) => {
   const uid = req.user.id;
   res.json({
-    competitions: all(
-      `SELECT c.id, c.seed_name AS name, c.short, c.logo_url AS crest,
-              c.country_name AS country,
-              EXISTS(SELECT 1 FROM follows f
-                      WHERE f.user_id = ? AND f.kind = 'competition' AND f.entity_id = c.id) AS following,
-              (SELECT COUNT(*) FROM watch_logs wl
-                 JOIN matches m ON m.id = wl.match_id
-                WHERE wl.user_id = ? AND wl.watched = 1 AND m.competition_id = c.id) AS watched
-         FROM competitions c
-        WHERE c.is_seed = 1 AND c.resolved = 1
-        ORDER BY c.seed_name COLLATE NOCASE ASC`,
-      uid,
-      uid,
-    ).map((r) => ({ ...r, following: !!r.following })),
+    teams: teamRows(uid).filter((t) => t.popularity > 0),
+    competitions: competitionRows(uid).filter((c) => c.popularity > 0),
+    following: get('SELECT COUNT(*) AS n FROM follows WHERE user_id = ?', uid).n,
   });
 });
 
@@ -57,12 +83,12 @@ catalogRouter.get('/competitions', (req, res) => {
 catalogRouter.get('/filters', (req, res) => {
   const uid = req.user.id;
   const competitions = all(
-    `SELECT c.id, c.seed_name AS name, c.short, COUNT(m.id) AS matches
+    `SELECT c.id, ${COMP_NAME} AS name, c.short, COUNT(m.id) AS matches
        FROM competitions c
        JOIN matches m ON m.competition_id = c.id
       WHERE c.resolved = 1
       GROUP BY c.id
-      ORDER BY c.seed_name COLLATE NOCASE ASC`,
+      ORDER BY c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
   );
   const customCount = get(
     'SELECT COUNT(*) AS n FROM matches WHERE is_custom = 1 AND owner_user_id = ?',
@@ -79,6 +105,10 @@ catalogRouter.get('/follows', (req, res) => {
   });
 });
 
+const tableFor = (kind) => (kind === 'competition' ? 'competitions' : 'teams');
+const followable = (kind, id) =>
+  Boolean(get(`SELECT id FROM ${tableFor(kind)} WHERE id = ? AND resolved = 1`, id));
+
 catalogRouter.put('/follows', (req, res) => {
   const uid = req.user.id;
   const kind = req.body?.kind === 'competition' ? 'competition' : 'team';
@@ -86,10 +116,9 @@ catalogRouter.put('/follows', (req, res) => {
   const following = Boolean(req.body?.following);
 
   if (!Number.isInteger(entityId)) return res.status(400).json({ error: 'Bad entity id' });
-
-  const table = kind === 'competition' ? 'competitions' : 'teams';
-  const exists = get(`SELECT id FROM ${table} WHERE id = ? AND is_seed = 1 AND resolved = 1`, entityId);
-  if (!exists) return res.status(404).json({ error: 'Not something you can follow' });
+  if (following && !followable(kind, entityId)) {
+    return res.status(404).json({ error: 'Not something you can follow' });
+  }
 
   if (following) {
     run(
@@ -104,4 +133,37 @@ catalogRouter.put('/follows', (req, res) => {
   }
 
   res.json({ ok: true, kind, id: entityId, following });
+});
+
+/** One call for the sign-up picker, so choosing twenty sides is not twenty requests. */
+catalogRouter.post('/follows/bulk', (req, res) => {
+  const uid = req.user.id;
+  const ids = (value) =>
+    [...new Set((Array.isArray(value) ? value : []).map(Number).filter(Number.isInteger))].slice(
+      0,
+      MAX_BULK_FOLLOWS,
+    );
+
+  const teams = ids(req.body?.teams);
+  const competitions = ids(req.body?.competitions);
+  const now = Date.now();
+
+  const added = tx(() => {
+    let n = 0;
+    for (const [kind, list] of [['team', teams], ['competition', competitions]]) {
+      for (const id of list) {
+        if (!followable(kind, id)) continue;
+        n += run(
+          'INSERT OR IGNORE INTO follows (user_id, kind, entity_id, created_at) VALUES (?, ?, ?, ?)',
+          uid,
+          kind,
+          id,
+          now,
+        ).changes;
+      }
+    }
+    return n;
+  });
+
+  res.json({ ok: true, added, following: get('SELECT COUNT(*) AS n FROM follows WHERE user_id = ?', uid).n });
 });

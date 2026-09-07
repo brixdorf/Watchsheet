@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS competitions (
   country_hint TEXT,
   is_seed      INTEGER NOT NULL DEFAULT 0,
   resolved     INTEGER NOT NULL DEFAULT 0,
+  -- Rough worldwide popularity; higher sorts first. 0 for anything unranked.
+  popularity   INTEGER NOT NULL DEFAULT 0,
   created_at   INTEGER NOT NULL,
   -- Bulk-sync rotation state: which season we pull, how far through its pages we got,
   -- and when the last complete pass finished.
@@ -69,6 +71,8 @@ CREATE TABLE IF NOT EXISTS teams (
   is_national  INTEGER NOT NULL DEFAULT 0,
   is_seed      INTEGER NOT NULL DEFAULT 0,
   resolved     INTEGER NOT NULL DEFAULT 0,
+  -- Rough worldwide popularity; higher sorts first. 0 for anything unranked.
+  popularity   INTEGER NOT NULL DEFAULT 0,
   created_at   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_team_resolved ON teams(resolved);

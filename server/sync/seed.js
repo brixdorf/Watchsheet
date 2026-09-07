@@ -1,5 +1,6 @@
 import { all, get, getState, run, setState, tx } from '../db/index.js';
 import { SEED_COMPETITIONS, SEED_TEAMS } from '../db/seedData.js';
+import { competitionPopularity, teamPopularity } from '../db/popularity.js';
 import { countryMatches, pickBest } from '../lib/names.js';
 import { BudgetExhaustedError, remaining } from './budget.js';
 import { listLeagues, listTeams, rowsOf, totalOf } from './client.js';
@@ -39,13 +40,14 @@ export function insertSeedRows() {
       if (existing) continue;
       run(
         `INSERT INTO competitions
-           (name, short, display_name, seed_name, country_hint, is_seed, resolved, created_at)
-         VALUES (?, ?, ?, ?, ?, 1, 0, ?)`,
+           (name, short, display_name, seed_name, country_hint, popularity, is_seed, resolved, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?)`,
         c.name,
         c.short,
         c.name,
         c.name,
         c.country ?? null,
+        competitionPopularity(c.name, c.country),
         now,
       );
       comps++;
@@ -56,13 +58,14 @@ export function insertSeedRows() {
       if (existing) continue;
       run(
         `INSERT INTO teams
-           (name, short, color, seed_name, is_national, is_seed, resolved, created_at)
-         VALUES (?, ?, ?, ?, ?, 1, 0, ?)`,
+           (name, short, color, seed_name, is_national, popularity, is_seed, resolved, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?)`,
         t.name,
         t.short,
         t.color,
         t.name,
         t.national ? 1 : 0,
+        teamPopularity(t.name),
         now,
       );
       teams++;

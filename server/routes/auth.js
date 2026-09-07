@@ -22,31 +22,18 @@ const VERIFY_MESSAGES = {
   mismatch: 'That code is not right.',
 };
 
-/**
- * Every new account starts out following everything from the seed list that resolved
- * against the provider. Seeds that never resolved are simply absent — custom match entry
- * covers those.
- */
-function followSeedEntities(userId) {
-  const now = Date.now();
-  run(
-    `INSERT OR IGNORE INTO follows (user_id, kind, entity_id, created_at)
-     SELECT ?, 'competition', id, ? FROM competitions WHERE is_seed = 1 AND resolved = 1`,
-    userId,
-    now,
-  );
-  run(
-    `INSERT OR IGNORE INTO follows (user_id, kind, entity_id, created_at)
-     SELECT ?, 'team', id, ? FROM teams WHERE is_seed = 1 AND resolved = 1`,
-    userId,
-    now,
-  );
-}
-
 const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, admin: isAdmin(u) });
 
+/** How many things this account follows — zero means it has not been through the picker. */
+const followCount = (userId) =>
+  get('SELECT COUNT(*) AS n FROM follows WHERE user_id = ?', userId).n;
+
 authRouter.get('/me', (req, res) => {
-  res.json({ user: req.user ? publicUser(req.user) : null, localDelivery: isLocalDelivery() });
+  res.json({
+    user: req.user ? publicUser(req.user) : null,
+    followCount: req.user ? followCount(req.user.id) : 0,
+    localDelivery: isLocalDelivery(),
+  });
 });
 
 authRouter.post('/request-code', async (req, res) => {
@@ -113,8 +100,6 @@ authRouter.post('/verify', (req, res) => {
     const existing = get('SELECT * FROM users WHERE email = ?', email);
     if (existing) {
       run('UPDATE users SET last_login_at = ? WHERE id = ?', Date.now(), existing.id);
-      // Catches follows for seeds that resolved after this account was created.
-      followSeedEntities(existing.id);
       return existing;
     }
     const name = (result.name || email.split('@')[0]).slice(0, 80);
@@ -127,12 +112,11 @@ authRouter.post('/verify', (req, res) => {
       now,
     );
     const id = Number(created.lastInsertRowid);
-    followSeedEntities(id);
     return { id, email, name };
   });
 
   setSessionCookie(res, createSession(user.id, req.get('user-agent')));
-  res.json({ user: publicUser(user) });
+  res.json({ user: publicUser(user), followCount: followCount(user.id) });
 });
 
 authRouter.post('/logout', (req, res) => {
