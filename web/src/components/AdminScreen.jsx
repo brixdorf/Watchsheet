@@ -19,6 +19,9 @@ const JOBS = [
 
 const CAPS = [2, 6, 12, 25];
 
+/** "1 request", not "1 requests". */
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 function ago(ts) {
   if (!ts) return 'never';
   const mins = Math.round((Date.now() - ts) / 60000);
@@ -207,7 +210,7 @@ export function AdminScreen({ onClose, onFlash }) {
                 label="Last run"
                 value={
                   status.lastRun
-                    ? `${status.lastRun.job} · ${status.lastRun.spent ?? 0} requests · ${ago(status.lastRun.at)}`
+                    ? `${status.lastRun.job} · ${plural(status.lastRun.spent ?? 0, 'request')} · ${ago(status.lastRun.at)}`
                     : 'not yet this boot'
                 }
               />
