@@ -15,10 +15,11 @@ import { runSeed, seedStatus } from './seed.js';
 
 let last = null;
 let running = false;
+let scheduled = false;
 
 export const lastRun = () => last;
 
-export async function tick({ slice = config.sync.slice } = {}) {
+export async function tick({ slice = config.sync.slice, job = 'auto' } = {}) {
   if (running) return { skipped: 'already running' };
   if (!config.highlightly.apiKey) return { skipped: 'no API key' };
 
@@ -28,7 +29,9 @@ export async function tick({ slice = config.sync.slice } = {}) {
   running = true;
   const startedAt = Date.now();
   try {
-    const seeding = !seedStatus().complete;
+    // 'auto' is what the schedule uses: finish seeding first, because the rotation has
+    // no competitions to work through until it does.
+    const seeding = job === 'seed' || (job === 'auto' && !seedStatus().complete);
     const result = seeding
       ? await runSeed({ maxRequests: budget })
       : await runSync({ maxRequests: budget });
@@ -49,6 +52,17 @@ export async function tick({ slice = config.sync.slice } = {}) {
   }
 }
 
+export const isRunning = () => running;
+
+/** When the next scheduled tick fires: five past the coming hour, or null if disabled. */
+export function nextRun() {
+  if (!scheduled) return null;
+  const next = new Date();
+  next.setMinutes(5, 0, 0);
+  if (next.getTime() <= Date.now()) next.setTime(next.getTime() + 3600000);
+  return next.getTime();
+}
+
 export function startCron() {
   if (!config.sync.enabled) {
     console.log('Sync cron disabled (SYNC_ENABLED=false).');
@@ -60,6 +74,7 @@ export function startCron() {
   }
 
   // Five past the hour, so a restart on the hour does not collide with the first tick.
+  scheduled = true;
   const task = cron.schedule('5 * * * *', () => {
     tick().then((r) => {
       if (r && !r.skipped) console.log(`Sync tick (${r.job}): ${r.spent ?? 0} requests`);

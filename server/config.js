@@ -18,6 +18,13 @@ export const config = {
   sessionSecret: process.env.SESSION_SECRET || 'watchsheet-dev-secret',
   databasePath: path.resolve(rootDir, process.env.DATABASE_PATH || './data/watchsheet.db'),
 
+  // Who may open the admin screen. Kept in the environment rather than on the user row,
+  // so access is a config change and a copied database grants nothing.
+  adminEmails: (process.env.ADMIN_EMAILS || 'admin@example.com')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+
   highlightly: {
     apiKey: process.env.HIGHLIGHTLY_API_KEY || '',
     baseUrl: (process.env.HIGHLIGHTLY_BASE_URL || 'https://soccer.highlightly.net').replace(/\/+$/, ''),

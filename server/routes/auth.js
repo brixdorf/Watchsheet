@@ -1,5 +1,6 @@
 import express from 'express';
 import { config } from '../config.js';
+import { isAdmin } from '../lib/admin.js';
 import { get, run, tx } from '../db/index.js';
 import { isLocalDelivery, mailProvider } from '../lib/email/index.js';
 import {
@@ -42,7 +43,7 @@ function followSeedEntities(userId) {
   );
 }
 
-const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email });
+const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, admin: isAdmin(u) });
 
 authRouter.get('/me', (req, res) => {
   res.json({ user: req.user ? publicUser(req.user) : null, localDelivery: isLocalDelivery() });
