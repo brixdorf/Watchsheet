@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { config } from '../../config.js';
+import { otpHtml, otpSubject, otpText } from './template.js';
 
 /**
  * Resend provider — live outbound sending.
@@ -42,30 +43,6 @@ function missingSettings() {
   return missing;
 }
 
-function escapeHtml(value) {
-  return String(value).replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
-}
-
-function renderHtml({ name, code, minutes }) {
-  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hi,';
-  return `<!doctype html>
-<html>
-  <body style="margin:0;padding:32px 16px;background:#080A09;font-family:'Barlow',Helvetica,Arial,sans-serif;color:#F1F5F2">
-    <div style="max-width:420px;margin:0 auto;background:#121715;border:1px solid #222A26;border-radius:20px;padding:28px">
-      <div style="font-size:24px;font-weight:800;letter-spacing:-0.03em;margin-bottom:4px">Watchsheet</div>
-      <div style="font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#00E27A;margin-bottom:24px">Your season, logged</div>
-      <p style="margin:0 0 12px;font-size:15px">${greeting}</p>
-      <p style="margin:0 0 20px;font-size:15px;color:#8B9792">Here is your sign-in code.</p>
-      <div style="font-size:34px;font-weight:800;letter-spacing:0.28em;text-align:center;padding:18px;background:#0D110F;border:1px solid #222A26;border-radius:14px">${escapeHtml(code)}</div>
-      <p style="margin:20px 0 0;font-size:13px;color:#8B9792">It expires in ${minutes} minutes. If you did not ask for it, you can ignore this email.</p>
-    </div>
-  </body>
-</html>`;
-}
-
 const isRateLimited = (error) =>
   /rate_limit/i.test(error?.name ?? '') || /rate limit/i.test(error?.message ?? '');
 
@@ -91,9 +68,9 @@ export const resendProvider = {
     const message = {
       from: config.mail.from,
       to: [to],
-      subject: `${code} is your Watchsheet code`,
-      html: renderHtml({ name, code, minutes }),
-      text: `Your Watchsheet sign-in code is ${code}. It expires in ${minutes} minutes.`,
+      subject: otpSubject(code),
+      html: otpHtml({ name, code, minutes, replyTo: config.mail.replyTo }),
+      text: otpText({ name, code, minutes, replyTo: config.mail.replyTo }),
       tags: [{ name: 'category', value: 'signin_code' }],
     };
     if (config.mail.replyTo) message.replyTo = config.mail.replyTo;
