@@ -41,7 +41,7 @@ export function Header({
   onSeason,
   onOpenExport,
   onOpenCustom,
-  onOpenSync,
+  onOpenAdmin,
   onLogout,
 }) {
   const [seasonOpen, setSeasonOpen] = useState(false);
@@ -190,9 +190,15 @@ export function Header({
                 <button type="button" className="ws-menu-item" onClick={() => { onOpenExport(); closeAll.current(); }}>
                   <i className="ph ph-download-simple" style={{ fontSize: 16, color: 'var(--dim)' }} /> Export history
                 </button>
-                <button type="button" className="ws-menu-item" onClick={() => { onOpenSync(); closeAll.current(); }}>
-                  <i className="ph ph-cloud-arrow-down" style={{ fontSize: 16, color: 'var(--dim)' }} /> Data &amp; sync
-                </button>
+                {user.admin && (
+                  <button
+                    type="button"
+                    className="ws-menu-item"
+                    onClick={() => { onOpenAdmin(); closeAll.current(); }}
+                  >
+                    <i className="ph ph-sliders-horizontal" style={{ fontSize: 16, color: 'var(--dim)' }} /> Admin
+                  </button>
+                )}
                 <button
                   type="button"
                   className="ws-menu-item"

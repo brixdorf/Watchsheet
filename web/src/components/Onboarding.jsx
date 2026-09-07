@@ -110,7 +110,7 @@ export function Onboarding({ onSignedIn }) {
     try {
       const res = await api.verifyCode(email.trim(), value);
       clearInterval(timerRef.current);
-      onSignedIn(res.user);
+      onSignedIn(res.user, res.followCount ?? 0);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'That code is not right.');
       setCode(['', '', '', '', '', '']);

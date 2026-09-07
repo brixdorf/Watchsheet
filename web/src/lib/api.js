@@ -64,13 +64,23 @@ export const api = {
   filters: () => request('/catalog/filters'),
   setFollow: (kind, id, following) =>
     request('/catalog/follows', { method: 'PUT', body: { kind, id, following } }),
+  suggestions: () => request('/catalog/suggestions'),
+  followMany: (teams, competitions) =>
+    request('/catalog/follows/bulk', { method: 'POST', body: { teams, competitions } }),
 
   saveLog: (matchId, data) => request(`/logs/${matchId}`, { method: 'PUT', body: data }),
   removeLog: (matchId) => request(`/logs/${matchId}`, { method: 'DELETE' }),
 
   stats: (season) => request(`/stats${qs({ season, tzOffset: tzOffset() })}`),
   exportCount: (scope) => request(`/export/count${qs({ scope })}`),
+
+  // Admin-only. Every one of these answers 404 for anyone else.
   syncStatus: () => request('/admin/sync'),
+  adminOverview: () => request('/admin/overview'),
+  adminUsers: () => request('/admin/users'),
+  runSync: (job, max) => request('/admin/sync/run', { method: 'POST', body: { job, max } }),
+  revokeSessions: (id) => request(`/admin/users/${id}/revoke`, { method: 'POST' }),
+  deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 };
 
 /** URL for the export download; the browser handles it as a normal navigation. */

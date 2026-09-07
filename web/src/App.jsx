@@ -4,6 +4,7 @@ import { animateScreen, installVisibilityGuard } from './lib/anim.js';
 import { useTheme } from './lib/useTheme.js';
 import { seasonIdFor } from './lib/format.js';
 
+import { FollowPicker } from './components/FollowPicker.jsx';
 import { CustomMatch } from './components/CustomMatch.jsx';
 import { ExportModal } from './components/ExportModal.jsx';
 import { Following } from './components/Following.jsx';
@@ -15,7 +16,7 @@ import { Onboarding } from './components/Onboarding.jsx';
 import { QuickLog } from './components/QuickLog.jsx';
 import { SearchScreen } from './components/SearchScreen.jsx';
 import { Stats } from './components/Stats.jsx';
-import { SyncPanel } from './components/SyncPanel.jsx';
+import { AdminScreen } from './components/AdminScreen.jsx';
 import { Spinner } from './components/layout.jsx';
 import { Toast } from './components/Toast.jsx';
 
@@ -31,6 +32,8 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [user, setUser] = useState(null);
   const [theme, setTheme] = useTheme();
+  // A signed-in account with nothing followed has not been through the picker yet.
+  const [needsPicker, setNeedsPicker] = useState(false);
 
   const [tab, setTab] = useState('home');
   const [season, setSeason] = useState(seasonIdFor(new Date()));
@@ -59,12 +62,20 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 1900);
   }, []);
 
+  const signedIn = useCallback((account, followCount) => {
+    setUser(account);
+    setNeedsPicker(followCount === 0);
+  }, []);
+
   /* ---------------------------------------------------------------- session */
 
   useEffect(() => {
     api
       .me()
-      .then((r) => setUser(r.user))
+      .then((r) => {
+        setUser(r.user);
+        setNeedsPicker(Boolean(r.user) && r.followCount === 0);
+      })
       .catch(() => setUser(null))
       .finally(() => setBooting(false));
   }, []);
@@ -263,6 +274,7 @@ export default function App() {
     setStats(null);
     setHistory(null);
     setTab('home');
+    setNeedsPicker(false);
   }, []);
 
   /* ----------------------------------------------------------------- render */
@@ -276,7 +288,20 @@ export default function App() {
   }
 
   if (!user) {
-    return <Onboarding onSignedIn={setUser} />;
+    return <Onboarding onSignedIn={signedIn} />;
+  }
+
+  if (needsPicker) {
+    return (
+      <FollowPicker
+        name={user.name}
+        onDone={(count, failure) => {
+          setNeedsPicker(false);
+          if (failure) flash(failure, 'negative');
+          else if (count) flash(`Following ${count} teams and competitions`);
+        }}
+      />
+    );
   }
 
   const seasonLabel = season === 'all' ? 'All seasons' : season;
@@ -295,12 +320,14 @@ export default function App() {
         onSeason={setSeason}
         onOpenExport={() => setModal('export')}
         onOpenCustom={() => setModal('custom')}
-        onOpenSync={() => setModal('sync')}
+        onOpenAdmin={() => setTab('admin')}
         onLogout={logout}
       />
 
       <div ref={mainRef} style={{ maxWidth: 1120, margin: '0 auto', padding: '20px 16px 80px' }}>
-        {!ready && <Spinner label="Loading your season" />}
+        {tab === 'admin' && <AdminScreen onClose={() => setTab('home')} onFlash={flash} />}
+
+        {!ready && tab !== 'admin' && <Spinner label="Loading your season" />}
 
         {ready && tab === 'home' && (
           <HomeFeed
@@ -376,7 +403,6 @@ export default function App() {
       {modal === 'export' && (
         <ExportModal seasons={seasons} season={season} onClose={() => setModal(null)} />
       )}
-      {modal === 'sync' && <SyncPanel onClose={() => setModal(null)} />}
 
       <Toast message={toast?.message} tone={toast?.tone} />
     </div>
