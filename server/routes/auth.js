@@ -79,6 +79,7 @@ authRouter.post('/request-code', async (req, res) => {
       name: name || existing?.name,
       code: issued.code,
       expiresAt: issued.expiresAt,
+      codeId: issued.codeId,
     });
   } catch (err) {
     console.error('Failed to send OTP:', err.message);

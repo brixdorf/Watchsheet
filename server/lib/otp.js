@@ -49,7 +49,7 @@ export function issueCode(email, name) {
   run('UPDATE otp_codes SET consumed_at = ? WHERE email = ? AND consumed_at IS NULL', now, addr);
 
   const code = generateCode();
-  run(
+  const inserted = run(
     `INSERT INTO otp_codes (email, name, code_hash, expires_at, attempts, created_at)
      VALUES (?, ?, ?, ?, 0, ?)`,
     addr,
@@ -59,7 +59,7 @@ export function issueCode(email, name) {
     now,
   );
 
-  return { code, expiresAt: now + CODE_TTL_MS };
+  return { code, codeId: Number(inserted.lastInsertRowid), expiresAt: now + CODE_TTL_MS };
 }
 
 /**

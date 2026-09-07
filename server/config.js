@@ -35,6 +35,7 @@ export const config = {
   mail: {
     provider: process.env.MAIL_PROVIDER || 'console',
     from: process.env.MAIL_FROM || 'Watchsheet <watchsheet@example.com>',
+    replyTo: process.env.MAIL_REPLY_TO || '',
     resendApiKey: process.env.RESEND_API_KEY || '',
     devEcho: bool(process.env.OTP_DEV_ECHO, process.env.NODE_ENV !== 'production'),
   },
