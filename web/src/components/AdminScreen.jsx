@@ -149,7 +149,7 @@ export function AdminScreen({ onClose, onFlash }) {
             data-anim="row"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(132px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
               gap: 9,
               marginBottom: 26,
             }}

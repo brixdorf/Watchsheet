@@ -100,14 +100,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || needsPicker) return;
     loadCore().catch(() => flash('Could not load your data', 'negative'));
-  }, [user, loadCore, flash]);
+  }, [user, needsPicker, loadCore, flash]);
 
   // Stats drive the Home hero strip as well as the Stats tab, so they follow the season
   // selector regardless of which tab is open.
   useEffect(() => {
-    if (!user) return;
+    if (!user || needsPicker) return;
     let live = true;
     api
       .stats(season)
@@ -116,7 +116,7 @@ export default function App() {
     return () => {
       live = false;
     };
-  }, [user, season]);
+  }, [user, needsPicker, season]);
 
   useEffect(() => {
     if (!user || tab !== 'history') return undefined;

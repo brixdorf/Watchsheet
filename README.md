@@ -4,7 +4,8 @@ A private logbook for football. One tap to mark a match watched — notes and a 
 only if you feel like it. Follow teams and competitions, add custom matches for anything
 the data provider doesn't carry, and take the whole history with you as JSON or CSV.
 
-Multi-user, session-based sign-in by email code. Fixtures come from
+Multi-user, session-based sign-in by email code; a session lasts 30 days and then needs a
+fresh code. Fixtures come from
 [Highlightly](https://highlightly.net) and are synced into local SQLite on a schedule, so
 nothing you do in the app ever calls the provider.
 
@@ -41,7 +42,8 @@ there is no native build step and no compiler needed.
 | `npm run sync:status` | today's spend, seed progress, fixture counts |
 | `npm run migrate` | apply the schema (also runs automatically on boot) |
 
-`Data & sync` in the account menu shows the same status inside the app.
+The **Admin** screen shows the same status inside the app, and can run any of the sync
+commands without a shell on the server.
 
 ## The request budget
 
@@ -79,28 +81,37 @@ Refresh runs first each tick because it is small and time-sensitive. A cron fire
 spends at most `SYNC_SLICE` requests, so the schedule cannot outrun the daily budget however
 often it fires.
 
-## Seeding
+## The catalog
 
-`npm run seed` resolves the requested teams and competitions against the provider. It runs
-automatically in the background too, and takes priority over fixture syncing until it
+`npm run seed` resolves a starting list of teams and competitions against the provider. It
+runs automatically in the background too, and takes priority over fixture syncing until it
 finishes, since the rotation has nothing to work with until competitions resolve.
 
 The league catalog (~900 entries) is mirrored into `provider_leagues` page by page, then
-matched locally. Caching it means a budget stop resumes at an offset rather than restarting,
+matched locally. Caching it means a budget stop resumes at an offset instead of restarting,
 and re-matching after an alias change costs nothing at all. Teams then resolve one lookup
 each. Expect 55–65 requests in total.
 
 Matching is deliberately strict — exact name, then alias, then a whole-word prefix tier that
 is rejected outright when two candidates fit equally well. A wrong match silently attaches a
-follow to the wrong club, which is worse than not resolving at all. A seed's own name always
-outranks an alias, which is what separates `UEFA Super Cup` from the 57 national
-competitions literally named "Super Cup"; the German and Indian entries that share the name
-`Super Cup` are told apart by a country hint on the seed row.
+follow to the wrong club, which is worse than not resolving at all. A seed name always
+outranks an alias, which is what separates `UEFA Super Cup` from the 57 national competitions
+literally named "Super Cup"; the German and Indian entries that share the name `Super Cup`
+are told apart by a country hint on the seed row.
 
-Of the requested list, 36 of 42 competitions and 43 of 46 teams resolve. The rest are not
-carried by the provider and are simply absent from the catalog — **Add custom match** covers
-them, which is the intended route for charity matches, Soccer Aid, the Durand Cup and the
-lower Nations League tiers.
+**That list is a starting menu, not the catalog.** Every team and competition the provider
+resolves — including the several hundred picked up from fixtures — can be followed by any
+user, at any time, from the Following tab. Nothing is auto-followed: a new account ends
+sign-up by choosing for itself, and following a side only decides whose fixtures reach the
+feed. It never marks anything watched.
+
+Ordering is a popularity rank stored on the row and re-applied on every boot from the ordered
+lists in `server/db/popularity.js`, so the names most people are looking for lead both the
+catalog and the sign-up picker. Changing that order is a one-file edit.
+
+Six of the requested competitions and three of the teams are not carried by the provider at
+all and are simply absent — **Add custom match** covers them, which is the intended route for
+charity matches, Soccer Aid, the Durand Cup and the lower Nations League tiers.
 
 ## Email codes
 
@@ -140,18 +151,38 @@ resend cooldown.
 `delivered@resend.dev`, `bounced@resend.dev` and `complained@resend.dev` exercise delivery,
 bounce and complaint handling without touching the domain reputation.
 
+## Admin
+
+One screen, reachable from the account menu, for the addresses listed in `ADMIN_EMAILS`
+(default: the owner). Everyone else gets a 404 from every route under `/api/admin` — not a
+403, so the surface does not announce that it exists.
+
+It holds the things that are nobody else's business or nobody else's to act on:
+
+- **Provider spend.** Today's requests against the budget, and what the provider itself
+  reports. This used to be visible to every signed-in user, which put an account-wide
+  resource in front of people who could do nothing about it.
+- **The sync schedule**, and a button that runs it now — the same job the cron runs, under
+  the same budget guard, with a per-run ceiling so a mis-click cannot spend the day. Choose
+  the lane (auto, fixtures, catalog) and the ceiling; no shell on the server needed.
+- **Accounts**: who has signed up, what they have logged, how many live sessions they hold
+  and when those expire. Sessions can be revoked, and an account deleted with everything
+  attached to it. Admin accounts are refused, so the button cannot lock you out.
+
 ## Layout
 
 ```
 server/
   config.js          env parsing, one place
-  db/                schema.sql, connection, migrate, the seed lists
-  lib/               session, otp, email providers, name matching, shared match reads
+  db/                schema, migrations, the seed lists, the popularity ranks
+  lib/admin.js       who may open the admin screen
+  lib/email/         provider factory, console and Resend transports, the OTP template
+  lib/               session, otp, name matching, shared match reads
   routes/            auth, catalog, matches, logs, stats, export, admin
   sync/              client, budget, seed, fixtures, cron, cli
 web/
   src/App.jsx        shell: session, tab, season, and the data each screen needs
-  src/components/    the five screens, the match card, the modals
+  src/components/    the five screens, the match card, the modals, admin, follow picker
   src/lib/           format and colour helpers, GSAP choreography, API client
 ```
 

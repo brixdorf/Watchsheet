@@ -13,7 +13,7 @@ import { Eyebrow, Spinner } from './layout.jsx';
  * puts its fixtures in the feed. It never marks anything watched.
  */
 
-const FEATURED = 6;
+const FEATURED = 5;
 const QUICK_PICK = 8;
 
 export function FollowPicker({ name, onDone }) {
