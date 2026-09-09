@@ -9,6 +9,7 @@ import {
   issueCode,
   normalizeEmail,
   verifyCode,
+  RESEND_COOLDOWN_MS,
 } from '../lib/otp.js';
 import { clearSessionCookie, createSession, destroySession, setSessionCookie } from '../lib/session.js';
 
@@ -77,6 +78,9 @@ authRouter.post('/request-code', async (req, res) => {
   res.json({
     ok: true,
     expiresAt: issued.expiresAt,
+    // The cooldown is enforced here, so the countdown on screen is seeded from here too
+    // rather than from a second copy of the number living in the client.
+    resendInMs: RESEND_COOLDOWN_MS,
     isReturning: !!existing,
     // Local delivery means the code never left this machine, so echoing it back is not a
     // disclosure — it is what makes the flow usable before a real provider is wired.

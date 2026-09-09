@@ -13,9 +13,13 @@ export const CODE_TTL_MS = 10 * 60 * 1000;
 export const RESEND_COOLDOWN_MS = 30 * 1000;
 export const MAX_ATTEMPTS = 5;
 
+/**
+ * The message carries no number. `retryAfterMs` does, and the screen counts it down live,
+ * so there is nothing on screen that can freeze at the moment the error was raised.
+ */
 export class CooldownError extends Error {
   constructor(retryAfterMs) {
-    super(`Hold on — you can request another code in ${Math.ceil(retryAfterMs / 1000)}s.`);
+    super('Hold on. You can ask for another code in a moment.');
     this.name = 'CooldownError';
     this.retryAfterMs = retryAfterMs;
   }

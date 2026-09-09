@@ -51,9 +51,14 @@ export function Onboarding({ onSignedIn }) {
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
-  const startCooldown = () => {
+  /**
+   * The cooldown is the server's to define, so the countdown is seeded from what it reports:
+   * `resendInMs` when a code goes out, `retryAfterMs` when one is refused for being early.
+   * The fallback only covers a response that carried neither.
+   */
+  const startCooldown = (seconds) => {
     clearInterval(timerRef.current);
-    setResend(30);
+    setResend(Math.max(1, Math.ceil(seconds ?? 30)));
     timerRef.current = setInterval(() => {
       setResend((s) => {
         if (s <= 1) {
@@ -76,10 +81,15 @@ export function Onboarding({ onSignedIn }) {
       const res = await api.requestCode(email.trim(), name.trim());
       setDevCode(res.devCode ?? null);
       setCode(['', '', '', '', '', '']);
+      const cooldown = res.resendInMs != null ? res.resendInMs / 1000 : undefined;
       setStep(2);
-      startCooldown();
+      startCooldown(cooldown);
       setTimeout(() => cellsRef.current[0]?.focus(), 120);
     } catch (err) {
+      if (err instanceof ApiError && err.payload?.retryAfterMs != null) {
+        setStep(2);
+        startCooldown(err.payload.retryAfterMs / 1000);
+      }
       setError(err instanceof ApiError ? err.message : 'Could not send the code.');
     } finally {
       setBusy(false);
@@ -94,9 +104,15 @@ export function Onboarding({ onSignedIn }) {
       const res = await api.requestCode(email.trim(), name.trim());
       setDevCode(res.devCode ?? null);
       setCode(['', '', '', '', '', '']);
-      startCooldown();
+      const cooldown = res.resendInMs != null ? res.resendInMs / 1000 : undefined;
+      startCooldown(cooldown);
       setTimeout(() => cellsRef.current[0]?.focus(), 80);
     } catch (err) {
+      // A 429 means the server is still counting; take its number rather than showing a
+      // second, stale one beside the live button.
+      if (err instanceof ApiError && err.payload?.retryAfterMs != null) {
+        startCooldown(err.payload.retryAfterMs / 1000);
+      }
       setError(err instanceof ApiError ? err.message : 'Could not resend the code.');
     } finally {
       setBusy(false);
