@@ -5,7 +5,7 @@ import { SEED_COMPETITIONS, SEED_TEAMS } from './seedData.js';
  * Rough worldwide popularity, most-followed first.
  *
  * This orders what a new account is offered during sign-up and how the Following catalog
- * reads, so it is deliberately about global pull rather than anyone's personal taste — the
+ * reads, so it is deliberately about global pull rather than anyone's personal taste. The
  * seed list is a starting menu, not an assumption about what a user follows.
  *
  * Names are compared after normalisation, so they are written here without diacritics.

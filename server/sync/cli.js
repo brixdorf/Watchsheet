@@ -34,7 +34,7 @@ function printStatus() {
   const f = fixtureStatus();
 
   console.log('\nAPI budget');
-  console.log(`  ${b.spent}/${b.budget} spent today (${b.day}) — ${b.remaining} left`);
+  console.log(`  ${b.spent}/${b.budget} spent today (${b.day}), ${b.remaining} left`);
   if (b.providerRemaining != null) {
     console.log(`  provider reports ${b.providerRemaining}/${b.providerLimit} remaining`);
   }
@@ -84,7 +84,7 @@ async function main() {
 
   if (command === 'sync') {
     if (!seedStatus().complete) {
-      console.log('Seed is incomplete — run `npm run seed` first.\n');
+      console.log('Seed is incomplete. Run `npm run seed` first.\n');
       printStatus();
       return;
     }

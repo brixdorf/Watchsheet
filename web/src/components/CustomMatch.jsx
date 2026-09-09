@@ -4,7 +4,7 @@ import { Modal, ModalTitle } from './Modal.jsx';
 import { Stars, ratingText } from './Stars.jsx';
 
 /**
- * Manual match entry — the fallback for everything the provider does not carry.
+ * Manual match entry: the fallback for everything the provider does not carry.
  *
  * That is not an edge case here: charity matches, Soccer Aid, the Durand Cup and the lower
  * Nations League tiers all live in this form. A custom match is watched by definition, so
@@ -54,7 +54,7 @@ export function CustomMatch({ onClose, onSave }) {
     }
   };
 
-  const seasonHint = form.date ? seasonIdFor(new Date(`${form.date}T15:00:00`)) : '—';
+  const seasonHint = form.date ? seasonIdFor(new Date(`${form.date}T15:00:00`)) : 'pick a date';
 
   return (
     <Modal onClose={onClose} maxWidth={500}>
@@ -110,7 +110,7 @@ export function CustomMatch({ onClose, onSave }) {
 
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
-          <span style={{ ...label, marginBottom: 0 }}>Rating — optional</span>
+          <span style={{ ...label, marginBottom: 0 }}>Rating (optional)</span>
           <span style={{ fontSize: 11.5, color: 'var(--dim2)' }}>{ratingText(form.rating)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -119,7 +119,7 @@ export function CustomMatch({ onClose, onSave }) {
       </div>
 
       <div style={{ marginBottom: 18 }}>
-        <label htmlFor="cm-note" style={label}>Note — optional</label>
+        <label htmlFor="cm-note" style={label}>Note (optional)</label>
         <input id="cm-note" className="ws-field ws-field--card" style={field} value={form.note}
           onChange={(e) => set({ note: e.target.value })} placeholder="Freezing. Chips were elite." />
       </div>

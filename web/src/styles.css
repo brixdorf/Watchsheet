@@ -2,7 +2,7 @@
  * Design tokens, carried over unchanged from the Watchsheet design canvas.
  *
  * The canvas expressed interaction states as style-hover / style-focus attributes; those
- * become the real classes below. Everything else — palette, radii, type — is verbatim, so
+ * become the real classes below. Everything else (palette, radii, type) is verbatim, so
  * the built app and the canvas stay comparable side by side.
  */
 

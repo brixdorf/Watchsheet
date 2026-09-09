@@ -6,7 +6,7 @@
  * "Korea Republic", "Carabao Cup"). `color` and `short` drive the monogram fallback that
  * the design uses whenever a crest is missing.
  *
- * Anything that does not resolve is simply left out of the catalog — custom match entry
+ * Anything that does not resolve is simply left out of the catalog, and custom match entry
  * covers it.
  */
 

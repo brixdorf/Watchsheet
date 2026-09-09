@@ -5,7 +5,7 @@ import { get, run } from '../db/index.js';
 /**
  * Cookie-backed sessions kept in SQLite.
  *
- * The id is 32 random bytes, and the cookie is signed on top of that — signing is what
+ * The id is 32 random bytes, and the cookie is signed on top of that. Signing is what
  * stops a tampered id from even reaching a database lookup.
  */
 
@@ -50,7 +50,7 @@ export function clearSessionCookie(res) {
 }
 
 /**
- * Resolves the session cookie to `req.user` when it is valid. Never rejects — routes that
+ * Resolves the session cookie to `req.user` when it is valid. Never rejects, so routes that
  * need a user say so with requireAuth, so public routes stay simple.
  */
 export function attachUser(req, _res, next) {

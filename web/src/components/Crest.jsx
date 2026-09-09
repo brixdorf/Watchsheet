@@ -5,7 +5,7 @@ import { colorFor, ink } from '../lib/format.js';
  * A team or competition badge.
  *
  * The design had no crests available and always drew a coloured monogram. Real crests
- * exist now, so they lead — but the monogram stays as the fallback for anything without
+ * exist now, so they lead, but the monogram stays as the fallback for anything without
  * one, and for images that fail to load. Its colour is the club's brand colour where we
  * seeded one, and a hash of the name otherwise, so it is at least stable.
  */

@@ -5,7 +5,7 @@ import { animateScreen } from '../lib/anim.js';
 /**
  * Sign-in: intro, then name and email, then the six-digit code.
  *
- * The code is real — hashed server-side, rate limited, five attempts — only delivery is
+ * The code is real (hashed server-side, rate limited, five attempts). Only delivery is
  * local until a mail provider is configured. When it is local the server hands the code
  * back and it is shown here, which is what makes the whole flow usable today.
  */
@@ -203,7 +203,7 @@ export function Onboarding({ onSignedIn }) {
               on the record.
             </div>
             <div style={{ color: 'var(--dim)', fontSize: 14.5, marginBottom: 22 }}>
-              A private logbook for football. One tap to mark a match watched — notes and ratings only if you feel like it.
+              A private logbook for football. One tap to mark a match watched. Notes and ratings only if you feel like it.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
               {FEATURES.map(([icon, title, sub]) => (

@@ -16,8 +16,8 @@ import { clearSessionCookie, createSession, destroySession, setSessionCookie } f
 export const authRouter = express.Router();
 
 const VERIFY_MESSAGES = {
-  no_code: 'That code has expired — request a new one.',
-  expired: 'That code has expired — request a new one.',
+  no_code: 'That code has expired. Request a new one.',
+  expired: 'That code has expired. Request a new one.',
   too_many_attempts: 'Too many tries. Request a fresh code.',
   incomplete: 'All six digits, please.',
   mismatch: 'That code is not right.',
@@ -25,7 +25,7 @@ const VERIFY_MESSAGES = {
 
 const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, admin: isAdmin(u) });
 
-/** How many things this account follows — zero means it has not been through the picker. */
+/** How many things this account follows. Zero means it has not been through the picker. */
 const followCount = (userId) =>
   get('SELECT COUNT(*) AS n FROM follows WHERE user_id = ?', userId).n;
 
@@ -83,7 +83,7 @@ authRouter.post('/request-code', async (req, res) => {
     resendInMs: RESEND_COOLDOWN_MS,
     isReturning: !!existing,
     // Local delivery means the code never left this machine, so echoing it back is not a
-    // disclosure — it is what makes the flow usable before a real provider is wired.
+    // disclosure. It is what makes the flow usable before a real provider is wired.
     devCode: isLocalDelivery() && config.mail.devEcho ? issued.code : undefined,
   });
 });

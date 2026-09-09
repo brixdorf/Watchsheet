@@ -5,7 +5,7 @@
  *   1. Kill in-flight tweens and reset to the settled state before every run, so an
  *      interrupted tween can never strand an element in its from-state.
  *   2. Only hide-then-reveal inside a requestAnimationFrame, and bail if the document is
- *      hidden — in a background tab no frame arrives, so content simply stays visible.
+ *      hidden. In a background tab no frame arrives, so content simply stays visible.
  *   3. A timeout that forces the settled state shortly after, in case the ticker was
  *      throttled mid-flight.
  *

@@ -1,7 +1,7 @@
 /**
  * Development mail provider: prints the code to the server output instead of sending it.
  *
- * This is what makes the OTP flow genuinely usable before a real provider is wired — the
+ * This is what makes the OTP flow genuinely usable before a real provider is wired: the
  * code is real, hashed and verified like any other; only delivery is local.
  */
 

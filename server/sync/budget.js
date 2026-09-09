@@ -33,8 +33,8 @@ export function usageFor(day = dayKey()) {
  * Requests still available today.
  *
  * Two numbers are in play: our own count against the configured budget, and the provider's
- * `x-ratelimit-requests-remaining`. The header is authoritative whenever it is lower — it
- * survives restarts and accounts for the key being used elsewhere — so take the minimum.
+ * `x-ratelimit-requests-remaining`. The header is authoritative whenever it is lower: it
+ * survives restarts and accounts for the key being used elsewhere, so take the minimum.
  */
 export function remaining(day = dayKey()) {
   const u = usageFor(day);

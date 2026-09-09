@@ -8,13 +8,13 @@ import { normalizeMatch } from './normalize.js';
  * Fixture sync, in two lanes.
  *
  * The provider's /matches endpoint accepts either a single calendar date (which returns
- * every league on earth — ~900 rows, ten pages) or leagueId + season (which returns one
+ * every league on earth, ~900 rows over ten pages) or leagueId + season (which returns one
  * competition's whole season). The second form is dramatically cheaper for us, so it does
  * the bulk work:
  *
- *   Lane A — rotation: each resolved competition is re-pulled in full, oldest first,
+ *   Lane A, rotation: each resolved competition is re-pulled in full, oldest first,
  *            a page at a time, with the cursor stored on the row so a budget stop resumes.
- *   Lane B — refresh: matches we already hold that kicked off recently and are not yet
+ *   Lane B, refresh: matches we already hold that kicked off recently and are not yet
  *            final. Queried as leagueId + date, which is driven entirely by local data, so
  *            it only spends requests where fixtures actually exist.
  *
@@ -34,7 +34,7 @@ const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
 /**
  * Teams that appear in a synced competition but are not on the seed list still get a row,
  * so crests and names render and search finds them. They are not followable (is_seed = 0)
- * and cost nothing extra — the data is already in the payload.
+ * and cost nothing extra, since the data is already in the payload.
  */
 function ensureTeam(providerId, name, logoUrl) {
   if (!providerId) return null;
@@ -63,7 +63,7 @@ function ensureTeam(providerId, name, logoUrl) {
 
 /**
  * Upserts on provider_id so scores and status update in place. watch_logs key off the
- * local matches.id, which never changes — a re-sync can never orphan a user's log.
+ * local matches.id, which never changes, so a re-sync can never orphan a user's log.
  */
 function upsertMatch(m, competitionId) {
   const homeId = ensureTeam(m.homeProviderId, m.homeName, m.homeLogo);
@@ -117,7 +117,7 @@ function writePage(rows, competitionId) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Lane B — refresh recent, non-final matches                                  */
+/* Lane B: refresh recent, non-final matches                                  */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -170,7 +170,7 @@ export async function refreshRecent({ maxRequests = Infinity, log = () => {} } =
 }
 
 /* -------------------------------------------------------------------------- */
-/* Lane A — full-season rotation                                               */
+/* Lane A: full-season rotation                                               */
 /* -------------------------------------------------------------------------- */
 
 /** Competitions to re-pull, least recently completed first. Never-synced rows lead. */
@@ -266,7 +266,7 @@ export async function runSync({ maxRequests = Infinity, season = null, log = () 
   } catch (err) {
     if (!(err instanceof BudgetExhaustedError)) throw err;
     stoppedForBudget = true;
-    log('budget exhausted — progress saved, re-run to continue');
+    log('budget exhausted, progress saved, re-run to continue');
   }
 
   return { spent, stoppedForBudget, ...result };

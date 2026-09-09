@@ -1,8 +1,8 @@
 /**
  * The sign-in code email.
  *
- * Built to the same design tokens as the app — the dark ground, the card, the green accent,
- * the condensed uppercase eyebrow — so the mail that lets someone in looks like the thing
+ * Built to the same design tokens as the app (the dark ground, the card, the green accent,
+ * the condensed uppercase eyebrow) so the mail that lets someone in looks like the thing
  * they are being let into.
  *
  * Email is not the web, so the constraints are different and drive the markup:
@@ -40,7 +40,7 @@ function escapeHtml(value) {
   );
 }
 
-/** First name only — "Hi Sam Raj Sharma," reads like a form letter. */
+/** First name only: "Hi Sam Raj Sharma," reads like a form letter. */
 function firstName(name) {
   const first = String(name ?? '').trim().split(/\s+/)[0];
   return first && first.length <= 24 ? escapeHtml(first) : '';
@@ -53,14 +53,14 @@ export function otpSubject(code) {
 export function otpText({ name, code, minutes, replyTo }) {
   const who = String(name ?? '').trim().split(/\s+/)[0];
   const blocks = [
-    'WATCHSHEET — Your season, logged',
+    'WATCHSHEET / Your season, logged',
     who ? `Hi ${who},` : 'Hi,',
     'Your sign-in code is:',
     `    ${code}`,
     `It expires in ${minutes} minute${minutes === 1 ? '' : 's'} and can only be used once.`,
     'If you did not ask to sign in, you can ignore this email. The code is useless on its own and nobody can reach your account without it.',
     replyTo ? `Replies to this message go to ${replyTo}.` : null,
-    'Watchsheet — a private logbook for football.',
+    'Watchsheet, a private logbook for football.',
   ];
   return blocks.filter(Boolean).join('\n\n');
 }
@@ -151,7 +151,7 @@ export function otpHtml({ name, code, minutes, replyTo }) {
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.card2};border-radius:12px;">
                       <tr>
                         <td style="padding:13px 15px;font-family:${FONT};font-size:12.5px;color:${C.dim};line-height:1.55;">
-                          Did not ask for this? You can ignore it — the code is useless on its own and nobody can reach your account without it.
+                          Did not ask for this? You can ignore it. The code is useless on its own, and nobody can reach your account without it.
                         </td>
                       </tr>
                     </table>
@@ -164,7 +164,7 @@ export function otpHtml({ name, code, minutes, replyTo }) {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 8px 0;font-family:${FONT};font-size:11.5px;color:${C.dim2};line-height:1.6;">
-              Watchsheet — a private logbook for football. One tap to mark a match watched.
+              Watchsheet, a private logbook for football. One tap to mark a match watched.
               ${replyTo ? `<br>Replies to this message go to <span style="color:${C.dim};">${escapeHtml(replyTo)}</span>.` : ''}
             </td>
           </tr>

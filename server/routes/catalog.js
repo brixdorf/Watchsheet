@@ -15,7 +15,7 @@ catalogRouter.use(requireAuth);
  * are actually being played, then by rough worldwide popularity, so the names most people
  * are looking for lead and finished tournaments fall away on their own.
  *
- * Following is a filter on the feed, nothing more — it never implies a match was watched.
+ * Following is a filter on the feed, nothing more. It never implies a match was watched.
  */
 
 const MAX_BULK_FOLLOWS = 200;

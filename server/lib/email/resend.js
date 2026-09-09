@@ -3,11 +3,11 @@ import { config } from '../../config.js';
 import { otpHtml, otpSubject, otpText } from './template.js';
 
 /**
- * Resend provider — live outbound sending.
+ * Resend provider: live outbound sending.
  *
  * Deployment shape this is written against: the domain stays on another mail host, which keeps the
  * MX records and receives replies, while Resend sends. Those coexist because inbound (MX)
- * and sending authentication (SPF/DKIM) are separate records — but Resend still has to be
+ * and sending authentication (SPF/DKIM) are separate records, but Resend still has to be
  * authorised to send as the domain, so the domain must be verified at
  * https://resend.com/domains and the exact records it prints published in DNS.
  *
@@ -20,7 +20,7 @@ import { otpHtml, otpSubject, otpText } from './template.js';
 
 export class NotConfiguredError extends Error {
   constructor(missing) {
-    super(`Resend is not configured — set ${missing.join(' and ')} in the environment`);
+    super(`Resend is not configured. Set ${missing.join(' and ')} in the environment.`);
     this.name = 'NotConfiguredError';
   }
 }

@@ -8,7 +8,7 @@ import { runSeed, seedStatus } from './seed.js';
  * Hourly background sync.
  *
  * Each tick spends at most SYNC_SLICE requests, so the schedule cannot outrun the daily
- * budget however often it fires — and the budget guard is the hard stop regardless. The
+ * budget however often it fires, and the budget guard is the hard stop regardless. The
  * seed takes priority while it is incomplete, because the fixture rotation is driven by
  * resolved competitions and has nothing to work with until seeding finishes.
  */
@@ -69,7 +69,7 @@ export function startCron() {
     return null;
   }
   if (!config.highlightly.apiKey) {
-    console.log('Sync cron idle — HIGHLIGHTLY_API_KEY is not set.');
+    console.log('Sync cron idle: HIGHLIGHTLY_API_KEY is not set.');
     return null;
   }
 

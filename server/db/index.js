@@ -14,7 +14,7 @@ db.exec('PRAGMA synchronous = NORMAL');
 
 /**
  * node:sqlite has no transaction() wrapper, so this is the equivalent: run `fn` inside
- * BEGIN/COMMIT and roll back on any throw. Not reentrant — do not nest calls.
+ * BEGIN/COMMIT and roll back on any throw. Not reentrant, so do not nest calls.
  */
 export function tx(fn) {
   db.exec('BEGIN');

@@ -58,7 +58,7 @@ export function FollowPicker({ name, onDone }) {
   };
 
   const summary = useMemo(() => {
-    if (!total) return 'Pick as many as you like — or skip and add them later.';
+    if (!total) return 'Pick as many as you like, or skip and add them later.';
     const bits = [];
     if (comps.size) bits.push(`${comps.size} competition${comps.size === 1 ? '' : 's'}`);
     if (teams.size) bits.push(`${teams.size} team${teams.size === 1 ? '' : 's'}`);

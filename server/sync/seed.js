@@ -12,7 +12,7 @@ import { normalizeLeague, normalizeTeam } from './normalize.js';
  * Every step is resumable. Progress is committed per entity, so hitting the daily budget
  * is a clean stop: re-running tomorrow picks up at the first unresolved row rather than
  * starting over. Anything that cannot be resolved is marked -1 and stays out of the
- * catalog — custom match entry covers those.
+ * catalog, and custom match entry covers those.
  */
 
 const LEAGUE_PAGE = 100;
@@ -20,7 +20,7 @@ const LEAGUE_OFFSET_KEY = 'seed.leagues.offset';
 const LEAGUE_TOTAL_KEY = 'seed.leagues.total';
 
 /* -------------------------------------------------------------------------- */
-/* Step 1 — insert the seed rows. Free, no network.                            */
+/* Step 1: insert the seed rows. Free, no network.                            */
 /* -------------------------------------------------------------------------- */
 
 export function insertSeedRows() {
@@ -75,7 +75,7 @@ export function insertSeedRows() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Step 2 — mirror the league catalog, then match locally.                     */
+/* Step 2: mirror the league catalog, then match locally.                     */
 /* -------------------------------------------------------------------------- */
 
 /** True once every page of /leagues has been mirrored into provider_leagues. */
@@ -135,7 +135,7 @@ export async function fetchLeagueCatalog({ maxRequests = Infinity, log = () => {
 /**
  * Matches unresolved competitions against the cached catalog. Costs nothing.
  *
- * Country hints are enforced on the first pass — that is what separates the German and
+ * Country hints are enforced on the first pass, which is what separates the German and
  * Indian "Super Cup". Seeds with no hint, and hinted seeds that found nothing, get a
  * second pass without the country constraint.
  */
@@ -206,7 +206,7 @@ export function matchCompetitions({ finalize = false, log = () => {} } = {}) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Step 3 — resolve teams, one lookup each.                                    */
+/* Step 3: resolve teams, one lookup each.                                    */
 /* -------------------------------------------------------------------------- */
 
 export async function resolveTeams({ maxRequests = Infinity, log = () => {} } = {}) {
@@ -317,7 +317,7 @@ export async function runSeed({ maxRequests = Infinity, log = () => {} } = {}) {
   } catch (err) {
     if (!(err instanceof BudgetExhaustedError)) throw err;
     stoppedForBudget = true;
-    log('budget exhausted — progress saved, re-run to continue');
+    log('budget exhausted, progress saved, re-run to continue');
   }
 
   return { spent, stoppedForBudget, status: seedStatus() };

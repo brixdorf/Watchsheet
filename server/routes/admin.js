@@ -93,7 +93,7 @@ adminRouter.post('/sync/run', async (req, res) => {
     return res.status(409).json({ error: 'No provider API key is configured.' });
   }
   if (isRunning()) {
-    return res.status(409).json({ error: 'A sync is already running — give it a moment.' });
+    return res.status(409).json({ error: 'A sync is already running. Give it a moment.' });
   }
   if (remaining() < 1) {
     return res.status(409).json({ error: "Today's request budget is spent. It resets at midnight UTC." });
@@ -114,7 +114,7 @@ adminRouter.post('/users/:id/revoke', (req, res) => {
 });
 
 /**
- * Deletes an account and everything attached to it — logs, follows, custom matches and
+ * Deletes an account and everything attached to it: logs, follows, custom matches and
  * sessions all cascade. Admin accounts are refused, which also stops you locking yourself
  * out with one click.
  */

@@ -1,6 +1,6 @@
 /**
  * The 1–5 rating control. Clicking the star you are already on clears the rating, which is
- * how the design behaved — ratings stay genuinely optional.
+ * how the design behaved: ratings stay genuinely optional.
  */
 export function Stars({ value = 0, onChange, size = 40, flex = false }) {
   return (

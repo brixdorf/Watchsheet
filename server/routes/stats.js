@@ -13,7 +13,7 @@ statsRouter.use(requireAuth);
  * set rather than a page of it, which is why it lives here and not on the client.
  *
  * Anything time-of-day or calendar shaped (late kick-offs, matches per day, month buckets)
- * is computed in the viewer's timezone, passed in as `tzOffset` — the value of
+ * is computed in the viewer's timezone, passed in as `tzOffset`, the value of
  * Date.getTimezoneOffset(). Without it a 9pm kick-off would count as late or not
  * depending on where the server happens to run.
  */

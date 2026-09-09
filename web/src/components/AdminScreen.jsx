@@ -4,7 +4,7 @@ import { fmtDateShort } from '../lib/format.js';
 import { Eyebrow, EmptyNote, SectionHeading, Spinner } from './layout.jsx';
 
 /**
- * The admin screen — owner only, and the only place provider spend is visible.
+ * The admin screen. Owner only, and the only place provider spend is visible.
  *
  * It exists because two things were in the wrong hands: the request budget was shown to
  * every signed-in user, and running a sync meant shell access to the server. Both belong
@@ -33,7 +33,7 @@ function ago(ts) {
 }
 
 function until(ts) {
-  if (!ts) return '—';
+  if (!ts) return 'not scheduled';
   const mins = Math.max(0, Math.round((ts - Date.now()) / 60000));
   if (mins < 60) return `in ${mins}m`;
   const hours = Math.round(mins / 60);
@@ -75,7 +75,7 @@ export function AdminScreen({ onClose, onFlash }) {
       const spent = res.result?.spent ?? 0;
       onFlash(
         res.result?.skipped
-          ? `Nothing to do — ${res.result.skipped}.`
+          ? `Nothing to do. ${res.result.skipped}.`
           : `${res.result?.job ?? 'sync'} finished · ${spent} request${spent === 1 ? '' : 's'} spent`,
         res.result?.skipped ? 'warn' : 'accent',
       );
@@ -205,7 +205,7 @@ export function AdminScreen({ onClose, onFlash }) {
                     : 'off'
                 }
               />
-              <Line label="Next run" value={status.schedule.nextRun ? until(status.schedule.nextRun) : '—'} />
+              <Line label="Next run" value={status.schedule.nextRun ? until(status.schedule.nextRun) : 'not scheduled'} />
               <Line
                 label="Last run"
                 value={
@@ -299,7 +299,7 @@ export function AdminScreen({ onClose, onFlash }) {
               value={
                 status.seed.complete
                   ? 'complete'
-                  : `in progress — ${status.seed.leagueCatalog.fetched}/${status.seed.leagueCatalog.total}`
+                  : `in progress, ${status.seed.leagueCatalog.fetched} of ${status.seed.leagueCatalog.total}`
               }
             />
             <Line

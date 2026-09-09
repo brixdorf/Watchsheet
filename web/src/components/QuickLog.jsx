@@ -8,7 +8,7 @@ import { Eyebrow } from './layout.jsx';
 /**
  * The sheet that appears the moment a match is ticked off.
  *
- * The match is already logged by the time this opens — Skip keeps it that way. This exists
+ * The match is already logged by the time this opens, and Skip keeps it that way. This exists
  * only to catch a rating and a note while they are still fresh, which is why both are
  * optional and neither blocks.
  */
@@ -61,14 +61,14 @@ export function QuickLog({ match, onSkip, onSave, onOpenDetail }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 9 }}>
-          <Eyebrow style={{ marginBottom: 0, fontSize: 11, fontWeight: 600 }}>Rating — optional</Eyebrow>
+          <Eyebrow style={{ marginBottom: 0, fontSize: 11, fontWeight: 600 }}>Rating (optional)</Eyebrow>
           <div style={{ fontSize: 12, color: 'var(--dim2)' }}>{ratingText(rating)}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
           <Stars value={rating} onChange={setRating} size={44} flex />
         </div>
 
-        <Eyebrow style={{ fontSize: 11, fontWeight: 600, marginBottom: 9 }}>Note — optional</Eyebrow>
+        <Eyebrow style={{ fontSize: 11, fontWeight: 600, marginBottom: 9 }}>Note (optional)</Eyebrow>
         <textarea
           className="ws-field ws-field--card"
           rows={3}

@@ -3,7 +3,7 @@
  *
  * The provider names things its own way ("Bayern Munich", "Korea Republic", "Carabao
  * Cup"), so resolution is: exact normalized match, then alias match, then a conservative
- * fuzzy fallback. The fallback is deliberately strict — a wrong match silently attaches a
+ * fuzzy fallback. The fallback is deliberately strict, because a wrong match silently attaches a
  * user's follow to the wrong club, which is worse than not resolving at all.
  */
 
@@ -54,9 +54,9 @@ export function scoreName(seedName, aliases, candidateName) {
   const candCore = coreName(candidateName);
   if (!cand) return 0;
 
-  // The seed's own name always outranks an alias. Aliases are broad by design — "Super
+  // The seed's own name always outranks an alias. Aliases are broad by design ("Super
   // Cup" is a real alias for the Italian and Spanish trophies, and every country has a
-  // competition by that literal name — so an alias must never beat an exact hit on the
+  // competition by that literal name), so an alias must never beat an exact hit on the
   // name we actually asked for.
   if (normalizeName(seedName) === cand) return 100;
   for (const w of aliases || []) {
@@ -69,7 +69,7 @@ export function scoreName(seedName, aliases, candidateName) {
   for (const w of [seedName, ...(aliases || [])]) {
     const wc = coreName(w);
     if (!wc) continue;
-    // "arsenal" vs "arsenal women" / "arsenal u21" — a prefix match on whole words only.
+    // "arsenal" vs "arsenal women" / "arsenal u21": a prefix match on whole words only.
     if (candCore.startsWith(wc + ' ') || candCore.endsWith(' ' + wc)) return 60;
   }
   return 0;
@@ -99,7 +99,7 @@ export function pickBest(seed, candidates, extra = () => 0) {
   const [best, runnerUp] = scored;
   // 60 is the weakest tier (whole-word prefix/suffix); anything below is a guess.
   if (best.score < 60) return null;
-  // A weak match that two candidates fit equally well is ambiguous — "Inter" against both
+  // A weak match that two candidates fit equally well is ambiguous: "Inter" against both
   // "Inter Miami" and "Inter Turku". Decline rather than pick one arbitrarily.
   if (best.score < 90 && runnerUp && runnerUp.score === best.score) return null;
   return best;

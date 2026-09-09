@@ -20,13 +20,13 @@ export function mailProvider() {
   const chosen = PROVIDERS[config.mail.provider];
   if (!chosen) {
     console.warn(
-      `Unknown MAIL_PROVIDER "${config.mail.provider}" — falling back to console delivery.`,
+      `Unknown MAIL_PROVIDER "${config.mail.provider}". Falling back to console delivery.`,
     );
     return consoleProvider;
   }
   if (!chosen.configured) {
     console.warn(
-      `MAIL_PROVIDER is "${chosen.name}" but it is not configured — falling back to console delivery.`,
+      `MAIL_PROVIDER is "${chosen.name}" but it is not configured. Falling back to console delivery.`,
     );
     return consoleProvider;
   }

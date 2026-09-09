@@ -5,7 +5,7 @@ import { EmptyNote, FilterPill } from './layout.jsx';
 /**
  * Teams and competitions to follow.
  *
- * Everything the provider resolved is here, not just the names Watchsheet was seeded with —
+ * Everything the provider resolved is here, not just the names Watchsheet was seeded with:
  * several hundred sides, ordered by rough worldwide popularity so the familiar ones lead.
  * The list is rendered in pages because a few hundred cards at once is a slow first paint;
  * typing a filter searches the whole catalog regardless of what is currently shown.

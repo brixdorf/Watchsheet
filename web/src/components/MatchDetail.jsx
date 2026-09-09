@@ -145,7 +145,7 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
           {watched && (
             <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 9 }}>
-                <Eyebrow style={{ marginBottom: 0 }}>Rating — optional</Eyebrow>
+                <Eyebrow style={{ marginBottom: 0 }}>Rating (optional)</Eyebrow>
                 <button
                   type="button"
                   className="ws-quiet"
@@ -160,7 +160,7 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
                 <div style={{ fontSize: 12, color: 'var(--dim)', marginLeft: 6 }}>{ratingText(rating)}</div>
               </div>
 
-              <Eyebrow>Note — optional</Eyebrow>
+              <Eyebrow>Note (optional)</Eyebrow>
               <textarea
                 className="ws-field ws-field--card"
                 rows={3}

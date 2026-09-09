@@ -2,7 +2,7 @@ import { MatchRow } from './MatchRow.jsx';
 import { SectionHeading, MatchGrid, EmptyNote } from './layout.jsx';
 
 /**
- * Home: a stat strip, then what is coming up and what just played — both drawn only from
+ * Home: a stat strip, then what is coming up and what just played, both drawn only from
  * the teams and competitions the user follows.
  */
 export function HomeFeed({ feed, stats, seasonLabel, onOpen, onToggle }) {
@@ -23,12 +23,12 @@ export function HomeFeed({ feed, stats, seasonLabel, onOpen, onToggle }) {
       icon: 'ph-fill ph-soccer-ball',
       label: 'Goals seen',
       value: stats?.goals ?? 0,
-      sub: stats?.count ? `${stats.goalsPerMatch.toFixed(2)} per match` : '—',
+      sub: stats?.count ? `${stats.goalsPerMatch.toFixed(2)} per match` : 'nothing logged yet',
     },
     {
       icon: 'ph-fill ph-star',
       label: 'Average rating',
-      value: stats?.averageRating ? stats.averageRating.toFixed(1) : '—',
+      value: stats?.averageRating ? stats.averageRating.toFixed(1) : '0.0',
       sub: stats?.rated ? `${stats.rated} of ${stats.count} rated` : 'nothing rated yet',
     },
   ];

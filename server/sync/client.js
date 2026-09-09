@@ -18,7 +18,7 @@ export class ProviderError extends Error {
 
 export class NotConfiguredError extends Error {
   constructor() {
-    super('HIGHLIGHTLY_API_KEY is not set — add it to .env before syncing');
+    super('HIGHLIGHTLY_API_KEY is not set. Add it to .env before syncing.');
     this.name = 'NotConfiguredError';
   }
 }
@@ -66,7 +66,7 @@ export async function request(pathname, params = {}, { retries = 2 } = {}) {
 
     // A provider-side 429 means our own ledger is behind reality. Stop the run rather
     // than burning the remaining allowance discovering the same thing again.
-    if (res.status === 429) throw new BudgetExhaustedError('Provider returned 429 — quota reached');
+    if (res.status === 429) throw new BudgetExhaustedError('Provider returned 429, so the quota is reached');
     if (!RETRY_STATUSES.has(res.status) || attempt === retries) throw lastErr;
     await sleep(800 * (attempt + 1));
   }

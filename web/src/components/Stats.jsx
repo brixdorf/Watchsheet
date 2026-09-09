@@ -4,7 +4,7 @@ import { Spinner } from './layout.jsx';
 
 /**
  * The Stats tab. Numbers come from /api/stats, which runs over the whole watched set;
- * the copy — including the "stats nobody asked for" block — is written here.
+ * the copy, including the "stats nobody asked for" block, is written here.
  */
 export function Stats({ stats, seasonLabel }) {
   if (!stats) return <Spinner label="Crunching numbers" />;
@@ -20,12 +20,12 @@ export function Stats({ stats, seasonLabel }) {
     {
       label: 'Goals witnessed',
       value: stats.goals,
-      sub: stats.count ? `${stats.goalsPerMatch.toFixed(2)} a game` : '—',
+      sub: stats.count ? `${stats.goalsPerMatch.toFixed(2)} a game` : 'nothing logged yet',
       color: 'var(--fg)',
     },
     {
       label: 'Average rating',
-      value: stats.averageRating ? stats.averageRating.toFixed(1) : '—',
+      value: stats.averageRating ? stats.averageRating.toFixed(1) : '0.0',
       sub: `${stats.rated} matches rated`,
       color: 'var(--fg)',
     },
@@ -62,7 +62,7 @@ export function Stats({ stats, seasonLabel }) {
       value: `${stats.gapDays} days`,
       sub: gapFrom
         ? `starting ${DAYS[gapFrom.getDay()]} ${gapFrom.getDate()} ${MONTHS[gapFrom.getMonth()]}`
-        : '—',
+        : 'no gap to speak of',
     },
     {
       icon: 'ph-fill ph-clock',
@@ -79,8 +79,8 @@ export function Stats({ stats, seasonLabel }) {
     {
       icon: 'ph-fill ph-skull',
       label: 'Harshest verdict',
-      value: stats.worst ? `${stats.worst.home}–${stats.worst.away}` : '—',
-      sub: stats.worst ? `${stats.worst.rating}/5 — you were not kind` : 'you have rated nothing yet',
+      value: stats.worst ? `${stats.worst.home}–${stats.worst.away}` : 'none',
+      sub: stats.worst ? `${stats.worst.rating}/5. You were not kind.` : 'you have rated nothing yet',
     },
   ];
 

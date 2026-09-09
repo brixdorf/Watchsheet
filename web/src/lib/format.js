@@ -2,7 +2,7 @@
  * Formatting and colour helpers, carried over from the design canvas.
  *
  * The contrast maths is what keeps a monogram legible on any club colour, and it is the
- * same routine the canvas used to recolour the accent — so light mode stays readable when
+ * same routine the canvas used to recolour the accent, so light mode stays readable when
  * the accent changes.
  */
 

@@ -241,7 +241,7 @@ export default function App() {
 
   /**
    * The one-tap path. The match is logged immediately, then the quick sheet opens to catch
-   * a rating and note — so dismissing the sheet still leaves it marked watched.
+   * a rating and note, so dismissing the sheet still leaves it marked watched.
    */
   const toggleWatched = useCallback(
     async (match) => {

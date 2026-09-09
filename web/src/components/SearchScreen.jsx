@@ -4,7 +4,7 @@ import { MatchRow } from './MatchRow.jsx';
 import { FilterPill, MatchGrid, Spinner } from './layout.jsx';
 
 /**
- * Search runs against local SQLite only — it never reaches the provider, which is what
+ * Search runs against local SQLite only. It never reaches the provider, which is what
  * keeps the free tier safe no matter how much searching happens.
  */
 export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpenCustom }) {
@@ -90,7 +90,7 @@ export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpe
           ? 'searching…'
           : result?.filtered
             ? `${matches.length} match${matches.length === 1 ? '' : 'es'} found`
-            : 'Recent matches — start typing to narrow'}
+            : 'Recent matches. Start typing to narrow them.'}
       </div>
 
       {loading && !result ? (
@@ -119,7 +119,7 @@ export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpe
         <div>
           <div style={{ fontWeight: 600, fontSize: 14.5 }}>Not in the database?</div>
           <div style={{ fontSize: 13, color: 'var(--dim)' }}>
-            Friendlies, charity matches, that grainy stream — add it by hand.
+            Friendlies, charity matches, that grainy stream. Add it by hand.
           </div>
         </div>
         <button type="button" className="ws-primary" onClick={onOpenCustom} style={{ padding: '11px 16px', borderRadius: 11, fontSize: 14 }}>

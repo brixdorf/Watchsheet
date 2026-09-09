@@ -23,7 +23,7 @@ export function ExportModal({ seasons, season, onClose }) {
   }, [scope]);
 
   const options = [
-    { id: 'all', label: 'Complete history — all seasons' },
+    { id: 'all', label: 'Complete history, every season' },
     ...seasons.map((s) => ({ id: s.id, label: `Season ${s.id}${s.current ? ' · current' : ''}`, logged: s.logged })),
   ];
 

@@ -61,7 +61,7 @@ matchesRouter.get('/feed', (req, res) => {
   });
 });
 
-/* Search runs entirely against local SQLite — it never touches the provider. */
+/* Search runs entirely against local SQLite. It never touches the provider. */
 matchesRouter.get('/search', (req, res) => {
   const uid = req.user.id;
   const q = String(req.query.q ?? '').trim().toLowerCase();
@@ -95,7 +95,7 @@ matchesRouter.get('/search', (req, res) => {
   const limit = q || competitionId || season ? 60 : 24;
   // Played matches first, most recent leading, then upcoming fixtures soonest-first.
   // Searching is mostly "what did I watch", so a fixture four months out should not be
-  // the first thing you see — but it should still be findable.
+  // the first thing you see, but it should still be findable.
   const now = Date.now();
   const matches = queryMatches(
     uid,
