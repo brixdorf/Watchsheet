@@ -78,7 +78,7 @@ export function FollowPicker({ name, onDone }) {
           <img
             src="/logo.svg"
             alt=""
-            style={{ width: 56, height: 56, flex: 'none', borderRadius: 16, boxShadow: '0 10px 26px rgba(11,42,168,.4)' }}
+            style={{ width: 62, height: 62, flex: 'none', borderRadius: 18, boxShadow: '0 10px 26px rgba(11,42,168,.4)' }}
           />
           <div style={{ minWidth: 0 }}>
             <Eyebrow style={{ marginBottom: 2 }}>Last step{name ? `, ${name}` : ''}</Eyebrow>

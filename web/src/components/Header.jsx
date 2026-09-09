@@ -61,7 +61,7 @@ export function Header({
         style={{
           maxWidth: 1120,
           margin: '0 auto',
-          padding: '11px 16px',
+          padding: '9px 16px',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
@@ -69,9 +69,19 @@ export function Header({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 'auto', minWidth: 0 }}>
-          <img src="/logo.svg" alt="" style={{ width: 48, height: 48, flex: 'none', borderRadius: 14 }} />
+          <img
+            src="/logo.svg"
+            alt=""
+            style={{
+              width: 62,
+              height: 62,
+              flex: 'none',
+              borderRadius: 18,
+              boxShadow: '0 10px 26px rgba(11,42,168,.4)',
+            }}
+          />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 25, letterSpacing: '-.03em', lineHeight: 1.05 }}>Watchsheet</div>
+            <div style={{ fontWeight: 800, fontSize: 29, letterSpacing: '-.03em', lineHeight: 1.05 }}>Watchsheet</div>
             <div
               style={{
                 fontSize: 11.5,
