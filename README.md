@@ -38,7 +38,7 @@ there is no native build step and no compiler needed.
 | `npm run seed` | resolve the seed list against the provider (resumable) |
 | `npm run sync` | refresh recent scores, then advance the season rotation |
 | `npm run sync -- --max=10` | cap a run at ten requests |
-| `npm run sync -- --season=2025` | rotate a past season instead of the current one |
+| `npm run sync -- --season=2027` | rotate a specific season instead of the competition's own |
 | `npm run sync:status` | today's spend, seed progress, fixture counts |
 | `npm run migrate` | apply the schema (also runs automatically on boot) |
 
@@ -105,13 +105,44 @@ user, at any time, from the Following tab. Nothing is auto-followed: a new accou
 sign-up by choosing for itself, and following a side only decides whose fixtures reach the
 feed. It never marks anything watched.
 
-Ordering is a popularity rank stored on the row and re-applied on every boot from the ordered
-lists in `server/db/popularity.js`, so the names most people are looking for lead both the
-catalog and the sign-up picker. Changing that order is a one-file edit.
+Competitions are ordered by whether they are **currently being played**, then by a popularity
+rank. Popularity alone left the World Cup and the Euros at the top of every list months after
+their finals; a competition now counts as live if it has a fixture within the last 45 days or
+any ahead of it (`server/lib/activity.js`). The window is wide enough to ride out an
+international break or a half-synced season, and short enough that a tournament drops away
+within weeks of its final. Nothing needs re-editing when qualifiers come round again.
+
+The rank itself is stored on the row and re-applied on every boot from the ordered lists in
+`server/db/popularity.js`, so it decides the order within the live set and among the dormant
+ones. Changing it is a one-file edit. Teams are ordered by popularity alone.
+
+The search filter strip narrows further still: it offers the competitions you follow **that
+are live**, falling back to whatever is live if you follow none of them.
 
 Six of the requested competitions and three of the teams are not carried by the provider at
 all and are simply absent. **Add custom match** covers them, which is the intended route for
 charity matches, Soccer Aid, the Durand Cup and the lower Nations League tiers.
+
+## What counts as current
+
+Watchsheet holds fixtures from **1 June 2026** onward and drops what came before
+(`DATA_FLOOR_MS` in `server/lib/season.js`). The floor is a kickoff date rather than a season
+id on purpose: the 2026 World Cup opened on 11 June, which the July rollover files under
+25/26, so flooring by season would have kept only its knockout rounds and left a half
+tournament on screen.
+
+It is enforced in three places, because any one of them alone would leak:
+
+- `writePage` in `server/sync/fixtures.js` drops pre-floor rows as they arrive. Both sync
+  lanes write through it, so the guard is stated once.
+- The rotation never asks the provider for a season before 2026. Twelve competitions still
+  carried a newest-advertised season of 2023-2025, and left alone they would re-import their
+  back catalogue on every pass and pay for it out of the daily budget.
+- `migrate()` deletes pre-floor fixtures on every boot. It is a cheap indexed delete, and
+  stating the invariant somewhere it gets re-checked beats a one-shot migration.
+
+Custom matches are exempt throughout. A record of a game someone watched is theirs, whenever
+it was played; the floor is about seeded provider data.
 
 ## Email codes
 
@@ -176,6 +207,8 @@ server/
   config.js          env parsing, one place
   db/                schema, migrations, the seed lists, the popularity ranks
   lib/admin.js       who may open the admin screen
+  lib/activity.js    whether a competition is currently being played
+  lib/season.js      season ids, and the date data starts from
   lib/email/         provider factory, console and Resend transports, the OTP template
   lib/               session, otp, name matching, shared match reads
   routes/            auth, catalog, matches, logs, stats, export, admin
@@ -192,7 +225,7 @@ own watch log. Watch logs key off the local `matches.id`, which is stable across
 so a score update from the provider can never orphan what a user recorded.
 
 Anything calendar- or clock-shaped (late kick-offs, matches per day, month buckets, export
-timestamps, is computed in the viewer's timezone, sent from the client. Otherwise a 9pm
+timestamps) is computed in the viewer's timezone, sent from the client. Otherwise a 9pm
 kick-off would count as late or not depending on where the server happens to run.
 
 ## Origin
