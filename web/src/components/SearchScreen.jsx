@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
 import { MatchRow } from './MatchRow.jsx';
 import { FilterPill, MatchGrid, Spinner } from './layout.jsx';
@@ -7,7 +7,7 @@ import { FilterPill, MatchGrid, Spinner } from './layout.jsx';
  * Search runs against local SQLite only — it never reaches the provider, which is what
  * keeps the free tier safe no matter how much searching happens.
  */
-export function SearchScreen({ season, filters, onOpen, onToggle, onOpenCustom }) {
+export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpenCustom }) {
   const [query, setQuery] = useState('');
   const [competition, setCompetition] = useState(null);
   const [result, setResult] = useState(null);
@@ -35,7 +35,13 @@ export function SearchScreen({ season, filters, onOpen, onToggle, onOpenCustom }
     };
   }, [query, competition, season]);
 
-  const matches = result?.matches ?? [];
+  // These results were fetched here, so anything marked watched since has to be layered
+  // back over them, or a row would revert the moment its sheet closed.
+  const matches = useMemo(() => {
+    const rows = result?.matches ?? [];
+    if (!patches?.size) return rows;
+    return rows.map((m) => patches.get(m.id) ?? m);
+  }, [result, patches]);
 
   return (
     <div>

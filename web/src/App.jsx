@@ -48,6 +48,10 @@ export default function App() {
   const [competitions, setCompetitions] = useState([]);
   const [filters, setFilters] = useState({ competitions: [], customCount: 0 });
 
+  // Every match this session has changed, so a screen that fetched its own copy earlier
+  // can render the current one.
+  const [patches, setPatches] = useState(() => new Map());
+
   const [detail, setDetail] = useState(null);
   const [quick, setQuick] = useState(null);
   const [modal, setModal] = useState(null);
@@ -55,6 +59,8 @@ export default function App() {
 
   const mainRef = useRef(null);
   const toastTimer = useRef(null);
+  // Set when a follow changes: the feed is only rebuilt when Home is next looked at.
+  const feedStale = useRef(false);
 
   const flash = useCallback((message, tone = 'accent') => {
     setToast({ message, tone });
@@ -104,6 +110,12 @@ export default function App() {
     loadCore().catch(() => flash('Could not load your data', 'negative'));
   }, [user, needsPicker, loadCore, flash]);
 
+  useEffect(() => {
+    if (!user || needsPicker || tab !== 'home' || !feedStale.current) return;
+    feedStale.current = false;
+    api.feed().then(setFeed).catch(() => {});
+  }, [user, needsPicker, tab]);
+
   // Stats drive the Home hero strip as well as the Stats tab, so they follow the season
   // selector regardless of which tab is open.
   useEffect(() => {
@@ -132,21 +144,58 @@ export default function App() {
     };
   }, [user, tab, season, historyFilter]);
 
-  // Re-run the entrance whenever the visible screen changes.
+  // Both core datasets in hand: the screens can render something other than a spinner.
+  const ready = Boolean(feed && stats);
+
+  /**
+   * The entrance runs when the visible screen changes, never when the rows already on it
+   * are patched underneath. Depending on the data objects themselves would replay the
+   * whole stagger every time a match was marked watched, which reads as a page reload.
+   */
+  const screenKey =
+    tab === 'history'
+      ? `history:${season}:${historyFilter}:${historyLoading ? 'loading' : 'ready'}`
+      : `${tab}:${season}`;
+
   useEffect(() => {
-    if (!user) return undefined;
+    if (!user || !ready) return undefined;
     return animateScreen(mainRef.current);
-  }, [user, tab, season, feed, stats, history, teams, competitions]);
+  }, [user, ready, screenKey]);
 
   /* -------------------------------------------------------------- mutations */
 
-  /** Patches one updated match into every list currently holding it. */
+  /**
+   * Patches one updated match into every list currently holding it.
+   *
+   * Lists that do not hold it keep their identity, so a log written on Home does not make
+   * the History rows look new to React. Screens that fetch their own results rather than
+   * receiving them from here (Search) read `patches` instead, which is why every update
+   * is recorded there too.
+   */
   const applyMatch = useCallback((match) => {
-    const swap = (list) => list.map((m) => (m.id === match.id ? match : m));
-    setFeed((f) => (f ? { ...f, upcoming: swap(f.upcoming), recent: swap(f.recent) } : f));
-    setHistory((h) => (h ? { ...h, groups: h.groups.map((g) => ({ ...g, matches: swap(g.matches) })) } : h));
+    const swap = (list) => (list.some((m) => m.id === match.id)
+      ? list.map((m) => (m.id === match.id ? match : m))
+      : list);
+    setFeed((f) => {
+      if (!f) return f;
+      const upcoming = swap(f.upcoming);
+      const recent = swap(f.recent);
+      return upcoming === f.upcoming && recent === f.recent ? f : { ...f, upcoming, recent };
+    });
+    setHistory((h) => {
+      if (!h) return h;
+      let touched = false;
+      const groups = h.groups.map((g) => {
+        const matches = swap(g.matches);
+        if (matches === g.matches) return g;
+        touched = true;
+        return { ...g, matches };
+      });
+      return touched ? { ...h, groups } : h;
+    });
     setDetail((d) => (d && d.id === match.id ? match : d));
     setQuick((q) => (q && q.id === match.id ? match : q));
+    setPatches((p) => new Map(p).set(match.id, match));
   }, []);
 
   /** Anything that changes the watched set invalidates the counts and the history list. */
@@ -155,8 +204,11 @@ export default function App() {
     if (tab === 'history') {
       api.history({ season, filter: historyFilter }).then(setHistory).catch(() => {});
     }
-    api.seasons().then((r) => setSeasons(r.seasons)).catch(() => {});
   }, [season, tab, historyFilter]);
+
+  const refreshSeasons = useCallback(() => {
+    api.seasons().then((r) => setSeasons(r.seasons)).catch(() => {});
+  }, []);
 
   const setLog = useCallback(
     async (matchId, data) => {
@@ -211,7 +263,7 @@ export default function App() {
       list((items) => items.map((i) => (i.id === id ? { ...i, following } : i)));
       try {
         await api.setFollow(kind, id, following);
-        api.feed().then(setFeed).catch(() => {});
+        feedStale.current = true;
       } catch {
         list((items) => items.map((i) => (i.id === id ? { ...i, following: !following } : i)));
         flash('Could not update that follow', 'negative');
@@ -236,11 +288,12 @@ export default function App() {
       setModal(null);
       await loadCore();
       refreshDerived();
+      refreshSeasons();
       api.filters().then(setFilters).catch(() => {});
       flash('Custom match logged');
       return res.match;
     },
-    [loadCore, refreshDerived, flash],
+    [loadCore, refreshDerived, refreshSeasons, flash],
   );
 
   const deleteCustom = useCallback(
@@ -250,12 +303,13 @@ export default function App() {
         setDetail(null);
         await loadCore();
         refreshDerived();
+        refreshSeasons();
         flash('Custom match deleted');
       } catch (err) {
         flash(err instanceof ApiError ? err.message : 'Could not delete that', 'negative');
       }
     },
-    [loadCore, refreshDerived, flash],
+    [loadCore, refreshDerived, refreshSeasons, flash],
   );
 
   const openDetail = useCallback(async (match) => {
@@ -305,7 +359,6 @@ export default function App() {
   }
 
   const seasonLabel = season === 'all' ? 'All seasons' : season;
-  const ready = feed && stats;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -343,6 +396,7 @@ export default function App() {
           <SearchScreen
             season={season}
             filters={filters}
+            patches={patches}
             onOpen={openDetail}
             onToggle={toggleWatched}
             onOpenCustom={() => setModal('custom')}
@@ -381,6 +435,7 @@ export default function App() {
 
       {quick && (
         <QuickLog
+          key={quick.id}
           match={quick}
           onSkip={() => {
             setQuick(null);
