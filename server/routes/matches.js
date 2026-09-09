@@ -1,7 +1,7 @@
 import express from 'express';
 import { all, get, run, tx } from '../db/index.js';
 import { followedClause, findMatch, queryMatches } from '../lib/present.js';
-import { seasonIdFor } from '../lib/season.js';
+import { seasonIdFor, DATA_FLOOR_MS } from '../lib/season.js';
 import { requireAuth } from '../lib/session.js';
 
 export const matchesRouter = express.Router();
@@ -161,10 +161,12 @@ matchesRouter.get('/seasons', (req, res) => {
        FROM matches m
        LEFT JOIN watch_logs wl ON wl.match_id = m.id AND wl.user_id = ?
       WHERE (m.is_custom = 0 OR m.owner_user_id = ?)
+        AND (m.is_custom = 1 OR m.kickoff_utc >= ?)
       GROUP BY m.season
       ORDER BY m.season DESC`,
     uid,
     uid,
+    DATA_FLOOR_MS,
   );
   const current = seasonIdFor(new Date());
   if (!rows.some((r) => r.season === current)) rows.unshift({ season: current, logged: 0 });

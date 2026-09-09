@@ -5,6 +5,7 @@ import { db, all, run } from './index.js';
 import { isMain } from '../lib/ismain.js';
 import { SEED_COMPETITIONS, SEED_TEAMS } from './seedData.js';
 import { competitionPopularity, teamPopularity, unranked } from './popularity.js';
+import { DATA_FLOOR_MS } from '../lib/season.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +50,25 @@ function applyPopularity() {
 }
 
 /** Applies schema.sql, then the additive migrations it cannot express. Safe on every boot. */
+/**
+ * Drops seeded fixtures from before the data floor.
+ *
+ * Runs every boot rather than once: it is a cheap indexed delete, and stating the invariant
+ * where it can be re-checked is worth more than a one-shot migration flag. Custom matches
+ * and anything anyone has marked watched are both excluded, so this can never take away a
+ * record somebody entered or kept.
+ */
+function purgeBelowFloor() {
+  const result = run(
+    `DELETE FROM matches
+      WHERE is_custom = 0
+        AND kickoff_utc < ?
+        AND id NOT IN (SELECT match_id FROM watch_logs)`,
+    DATA_FLOOR_MS,
+  );
+  return Number(result.changes ?? 0);
+}
+
 export function migrate() {
   db.exec(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
   ensureColumn('teams', 'popularity', 'INTEGER NOT NULL DEFAULT 0');
@@ -62,10 +82,12 @@ export function migrate() {
   if (gaps.teams.length || gaps.competitions.length) {
     console.warn('Seeds with no popularity rank:', [...gaps.competitions, ...gaps.teams].join(', '));
   }
-  return { ranked: applyPopularity() };
+  return { ranked: applyPopularity(), purged: purgeBelowFloor() };
 }
 
 if (isMain(import.meta.url)) {
   const result = migrate();
-  console.log(`Schema applied. ${result.ranked} popularity ranks written.`);
+  console.log(
+    `Schema applied. ${result.ranked} popularity ranks written, ${result.purged} pre-floor fixtures dropped.`,
+  );
 }

@@ -13,3 +13,18 @@ export function seasonIdFor(input) {
 
 /** The season containing "now". */
 export const currentSeason = () => seasonIdFor(new Date());
+
+/**
+ * Watchsheet keeps fixtures from the 2026 World Cup onward, and drops what came before.
+ *
+ * The floor is a kickoff date rather than a season id on purpose. The tournament opened on
+ * 11 June 2026, which the July rollover files under 25/26, so flooring by season would keep
+ * only its knockout rounds and leave a half tournament on screen.
+ *
+ * User-entered custom matches are exempt. Somebody's record of a game they watched is
+ * theirs, whenever it was played; this floor is about seeded provider data.
+ */
+export const DATA_FLOOR_MS = Date.parse('2026-06-01T00:00:00Z');
+
+/** The earliest provider season worth requesting, matching the floor above. */
+export const MIN_PROVIDER_SEASON = 2026;

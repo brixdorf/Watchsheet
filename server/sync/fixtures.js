@@ -1,5 +1,5 @@
 import { all, get, run, tx } from '../db/index.js';
-import { seasonIdFor } from '../lib/season.js';
+import { DATA_FLOOR_MS, MIN_PROVIDER_SEASON } from '../lib/season.js';
 import { BudgetExhaustedError, remaining } from './budget.js';
 import { listMatches, rowsOf, totalOf } from './client.js';
 import { normalizeMatch } from './normalize.js';
@@ -24,12 +24,6 @@ import { normalizeMatch } from './normalize.js';
 
 const PAGE = 100;
 const DAY_MS = 86_400_000;
-
-/** Provider seasons are the starting year, so '26/27' is 2026. */
-function providerSeasonFor(seasonId) {
-  const start = Number.parseInt(seasonId.slice(0, 2), 10);
-  return 2000 + start;
-}
 
 const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
 
@@ -113,6 +107,8 @@ function writePage(rows, competitionId) {
     for (const raw of rows) {
       const m = normalizeMatch(raw);
       if (!m) continue;
+      // Both lanes write through here, so the floor only needs stating once.
+      if (m.kickoffUtc < DATA_FLOOR_MS) continue;
       upsertMatch(m, competitionId);
       written++;
     }
@@ -202,7 +198,8 @@ export async function syncRotation({ maxRequests = Infinity, season = null, log 
     if (spent >= maxRequests) break;
 
     const seasonYear =
-      season ?? comp.provider_season ?? providerSeasonFor(seasonIdFor(new Date()));
+      season ??
+      Math.max(comp.provider_season ?? 0, MIN_PROVIDER_SEASON);
 
     while (spent < maxRequests) {
       if (remaining() < 1) throw new BudgetExhaustedError();
