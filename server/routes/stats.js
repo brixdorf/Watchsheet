@@ -14,7 +14,7 @@ statsRouter.use(requireAuth);
  *
  * Anything time-of-day or calendar shaped (late kick-offs, matches per day, month buckets)
  * is computed in the viewer's timezone, passed in as `tzOffset` — the value of
- * Date.getTimezoneOffset(). Without it a 21:00 kick-off would count as late or not
+ * Date.getTimezoneOffset(). Without it a 9pm kick-off would count as late or not
  * depending on where the server happens to run.
  */
 
@@ -174,17 +174,6 @@ statsRouter.get('/', (req, res) => {
   const topTeams = rank(teamCounts);
   const topComps = rank(compCounts);
 
-  /* How often the most-watched side lost while the user was watching. */
-  const topTeamId = topTeams[0]?.key ?? null;
-  let heartbreak = 0;
-  if (topTeamId != null) {
-    for (const r of rows) {
-      if (r.home_score == null || r.away_score == null) continue;
-      if (r.home_team_id === topTeamId && r.away_score > r.home_score) heartbreak++;
-      else if (r.away_team_id === topTeamId && r.home_score > r.away_score) heartbreak++;
-    }
-  }
-
   const withMeta = (list, meta) =>
     list.slice(0, 5).map((e) => ({ ...(meta.get(e.key) ?? { name: 'Unknown' }), n: e.n }));
 
@@ -208,8 +197,6 @@ statsRouter.get('/', (req, res) => {
     averageRating: avg,
     topTeams: withMeta(topTeams, teamMeta),
     topCompetitions: withMeta(topComps, compMeta),
-    topTeamName: topTeamId != null ? teamMeta.get(topTeamId)?.name ?? null : null,
-    heartbreak,
     worst: worstRow
       ? {
           rating: worstRow.rating,

@@ -192,7 +192,7 @@ own watch log. Watch logs key off the local `matches.id`, which is stable across
 so a score update from the provider can never orphan what a user recorded.
 
 Anything calendar- or clock-shaped — late kick-offs, matches per day, month buckets, export
-timestamps — is computed in the viewer's timezone, sent from the client. Otherwise a 21:00
+timestamps, is computed in the viewer's timezone, sent from the client. Otherwise a 9pm
 kick-off would count as late or not depending on where the server happens to run.
 
 ## Origin

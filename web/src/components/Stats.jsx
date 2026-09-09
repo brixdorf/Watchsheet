@@ -41,7 +41,7 @@ export function Stats({ stats, seasonLabel }) {
       icon: 'ph-fill ph-moon-stars',
       label: 'Insomniac index',
       value: stats.night,
-      sub: 'kick-offs at 21:00 or later. Sleep is for people without a backlog.',
+      sub: 'kick-offs at 9pm or later. Sleep is for people without a backlog.',
     },
     {
       icon: 'ph-fill ph-hourglass',
@@ -54,12 +54,6 @@ export function Stats({ stats, seasonLabel }) {
       label: 'Sofa marathon',
       value: `${stats.maxDay} in a day`,
       sub: 'your personal record for consecutive grass',
-    },
-    {
-      icon: 'ph-fill ph-heart-break',
-      label: 'Heartbreak tax',
-      value: stats.heartbreak,
-      sub: stats.topTeamName ? `times you watched ${stats.topTeamName} lose. On purpose.` : 'nothing to mourn yet',
     },
     { icon: 'ph-fill ph-lightning', label: 'Chaos merchant', value: stats.chaos, sub: 'matches with five goals or more' },
     {
