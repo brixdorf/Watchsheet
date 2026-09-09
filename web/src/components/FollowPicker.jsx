@@ -38,12 +38,13 @@ export function FollowPicker({ name, onDone }) {
 
   const total = teams.size + comps.size;
 
-  const toggle = (set, apply) => (id) => {
-    const next = new Set(set);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    apply(next);
-  };
+  const toggle = (apply) => (id) =>
+    apply((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const save = async (skip = false) => {
     if (skip) return onDone(0);
@@ -110,14 +111,14 @@ export function FollowPicker({ name, onDone }) {
               sub="Leagues, cups and tournaments."
               items={data.competitions}
               selected={comps}
-              onToggle={toggle(comps, setComps)}
+              onToggle={toggle(setComps)}
             />
             <Group
               title="Teams"
               sub="Clubs and national sides."
               items={data.teams}
               selected={teams}
-              onToggle={toggle(teams, setTeams)}
+              onToggle={toggle(setTeams)}
             />
           </>
         )}
@@ -194,7 +195,14 @@ function Group({ title, sub, items, selected, onToggle }) {
         <div style={{ fontSize: 12.5, color: 'var(--dim)' }}>{sub}</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))', gap: 10 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))',
+          gridAutoRows: '1fr',
+          gap: 10,
+        }}
+      >
         {items.map((item) => (
           <Pick key={item.id} item={item} on={selected.has(item.id)} onClick={() => onToggle(item.id)} />
         ))}
@@ -213,7 +221,9 @@ function Pick({ item, on, onClick }) {
       className="ws-pop"
       style={{
         display: 'grid',
+        gridTemplateRows: 'auto 1fr',
         gap: 9,
+        height: '100%',
         padding: '15px 13px',
         borderRadius: 16,
         cursor: 'pointer',
@@ -231,7 +241,23 @@ function Pick({ item, on, onClick }) {
         />
       </div>
       <div>
-        <div style={{ fontWeight: 700, fontSize: 14.5, lineHeight: 1.2 }}>{item.name}</div>
+        <div
+          style={{
+            fontWeight: 700,
+            fontSize: 14.5,
+            lineHeight: 1.2,
+            // Always two lines tall, wrapped or not, so a card in the Teams grid is exactly as
+            // big as one in the Competitions grid.
+            minHeight: '2.4em',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+          title={item.name}
+        >
+          {item.name}
+        </div>
         <div style={{ fontSize: 11.5, color: 'var(--dim)', marginTop: 2 }}>
           {item.isNational === true ? 'National side' : item.isNational === false ? 'Club' : item.country || 'International'}
         </div>
