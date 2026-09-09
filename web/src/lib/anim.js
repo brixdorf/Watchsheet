@@ -1,19 +1,35 @@
 /**
  * GSAP entrance choreography, ported from the design canvas including its safety nets.
  *
- * Those nets exist for a reason and are kept verbatim:
+ * The three nets are the canvas's own, and the reason the worst failure here is "no
+ * animation" rather than "invisible content":
  *   1. Kill in-flight tweens and reset to the settled state before every run, so an
  *      interrupted tween can never strand an element in its from-state.
  *   2. Only hide-then-reveal inside a requestAnimationFrame, and bail if the document is
  *      hidden. In a background tab no frame arrives, so content simply stays visible.
- *   3. A timeout that forces the settled state shortly after, in case the ticker was
- *      throttled mid-flight.
- *
- * Together they mean the worst failure is "no animation", never "invisible content".
+ *   3. A timeout that forces the settled state once the entrance should have finished, in
+ *      case the ticker was throttled mid-flight. Its window is computed from the stagger
+ *      rather than fixed, since a fixed one expired early on long lists and left their last
+ *      rows hidden permanently.
  */
 
 const SETTLED = { opacity: 1, y: 0, scale: 1, scaleY: 1, clearProps: 'transform,opacity' };
-const SAFETY_MS = 1500;
+
+/**
+ * The stagger is capped as a total, not billed per row.
+ *
+ * A per-row delay is fine for a feed of a dozen cards and wrong for the catalog, which
+ * renders sixty: at 0.028s each the last card would not appear for over two seconds, which
+ * reads as a list that is still loading. Handing GSAP `amount` spreads the same choreography
+ * across a fixed window however many rows there are, so a long list arrives quickly and a
+ * short one still arrives one card at a time.
+ */
+const ROW_STAGGER_EACH = 0.028;
+const ROW_STAGGER_MAX = 0.55;
+const NUM_STAGGER_EACH = 0.03;
+const NUM_STAGGER_MAX = 0.3;
+
+const spread = (count, each, max) => Math.min(count * each, max);
 
 const gsap = () => (typeof window !== 'undefined' ? window.gsap : null);
 
@@ -49,6 +65,13 @@ export function animateScreen(root) {
   const bars = pick(root, '[data-anim="bar"]');
   const sets = [rows, nums, bars];
 
+  const rowSpread = spread(rows.length, ROW_STAGGER_EACH, ROW_STAGGER_MAX);
+  const numSpread = spread(nums.length, NUM_STAGGER_EACH, NUM_STAGGER_MAX);
+  const barSpread = spread(bars.length, 0.035, 0.4);
+  // Long enough to cover the slowest entrance in flight, plus a margin. A fixed window used
+  // to expire mid-stagger on the catalog and leave its last rows invisible for good.
+  const safetyMs = Math.ceil((0.6 + Math.max(rowSpread, numSpread, barSpread)) * 1000) + 600;
+
   settle(g, sets);
   if (prefersReducedMotion()) return () => {};
 
@@ -68,7 +91,7 @@ export function animateScreen(root) {
           opacity: 1,
           duration: 0.42,
           ease: 'power3.out',
-          stagger: { each: 0.028, from: 'start' },
+          stagger: { amount: rowSpread, from: 'start' },
           ...done(rows),
         },
       );
@@ -84,7 +107,7 @@ export function animateScreen(root) {
           duration: 0.5,
           delay: 0.06,
           ease: 'back.out(2)',
-          stagger: 0.03,
+          stagger: { amount: numSpread, from: 'start' },
           ...done(nums),
         },
       );
@@ -93,12 +116,12 @@ export function animateScreen(root) {
       g.fromTo(
         bars,
         { scaleY: 0, transformOrigin: 'bottom' },
-        { scaleY: 1, duration: 0.6, ease: 'power3.out', stagger: 0.035, ...done(bars) },
+        { scaleY: 1, duration: 0.6, ease: 'power3.out', stagger: { amount: barSpread }, ...done(bars) },
       );
     }
   });
 
-  const timer = setTimeout(() => settle(g, sets), SAFETY_MS);
+  const timer = setTimeout(() => settle(g, sets), safetyMs);
 
   return () => {
     cancelAnimationFrame(frame);
