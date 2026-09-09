@@ -17,7 +17,7 @@ cp .env.example .env        # then add HIGHLIGHTLY_API_KEY
 npm run dev                 # API on :3000, Vite on :5173
 ```
 
-Open http://localhost:5173. First run has an empty catalog — see **Seeding** below.
+Open http://localhost:5173. First run has an empty catalog — see **The catalog** below.
 
 For production:
 
