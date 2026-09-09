@@ -7,14 +7,13 @@ import { Eyebrow, Spinner } from './layout.jsx';
 /**
  * The last step of signing up: choose what shows up in your feed.
  *
- * Ordering is rough worldwide popularity, and the first few of each list are drawn larger,
- * so the names most people are looking for are both first and most prominent. Nothing is
- * pre-selected — an account starts with whatever its owner picks, and following a side only
- * puts its fixtures in the feed. It never marks anything watched.
+ * Competitions being played lead, then the rest by rough worldwide popularity, so the names
+ * most people are looking for come first. Every card is the same size: the order carries the
+ * emphasis, and nothing here should suggest one side is a better answer than another.
+ *
+ * Nothing is pre-selected. An account starts with whatever its owner picks, and following a
+ * side only puts its fixtures in the feed. It never marks anything watched.
  */
-
-const FEATURED = 5;
-const QUICK_PICK = 8;
 
 export function FollowPicker({ name, onDone }) {
   const [data, setData] = useState(null);
@@ -44,11 +43,6 @@ export function FollowPicker({ name, onDone }) {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     apply(next);
-  };
-
-  const quickPick = () => {
-    setComps(new Set((data?.competitions ?? []).slice(0, QUICK_PICK).map((c) => c.id)));
-    setTeams(new Set((data?.teams ?? []).slice(0, QUICK_PICK).map((t) => t.id)));
   };
 
   const save = async (skip = false) => {
@@ -111,30 +105,6 @@ export function FollowPicker({ name, onDone }) {
 
         {data && (
           <>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 26 }}>
-              <button
-                type="button"
-                className="ws-quiet"
-                onClick={quickPick}
-                style={{ padding: '8px 13px', borderRadius: 10, fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
-              >
-                <i className="ph ph-sparkle" style={{ fontSize: 15 }} /> Pick the popular ones
-              </button>
-              {total > 0 && (
-                <button
-                  type="button"
-                  className="ws-quiet"
-                  onClick={() => {
-                    setTeams(new Set());
-                    setComps(new Set());
-                  }}
-                  style={{ padding: '8px 13px', borderRadius: 10, fontSize: 13 }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
             <Group
               title="Competitions"
               sub="Leagues, cups and tournaments."
@@ -177,6 +147,19 @@ export function FollowPicker({ name, onDone }) {
             }}
           >
             <div style={{ fontSize: 13, color: 'var(--dim)', minWidth: 0, flex: 1 }}>{summary}</div>
+            {total > 0 && (
+              <button
+                type="button"
+                className="ws-quiet"
+                onClick={() => {
+                  setTeams(new Set());
+                  setComps(new Set());
+                }}
+                style={{ padding: '10px 14px', borderRadius: 11, fontSize: 13.5 }}
+              >
+                Clear
+              </button>
+            )}
             <button
               type="button"
               className="ws-quiet"
@@ -204,9 +187,6 @@ export function FollowPicker({ name, onDone }) {
 }
 
 function Group({ title, sub, items, selected, onToggle }) {
-  const featured = items.slice(0, FEATURED);
-  const rest = items.slice(FEATURED);
-
   return (
     <div style={{ marginBottom: 30 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
@@ -214,29 +194,16 @@ function Group({ title, sub, items, selected, onToggle }) {
         <div style={{ fontSize: 12.5, color: 'var(--dim)' }}>{sub}</div>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))',
-          gap: 10,
-          marginBottom: rest.length ? 10 : 0,
-        }}
-      >
-        {featured.map((item) => (
-          <BigPick key={item.id} item={item} on={selected.has(item.id)} onClick={() => onToggle(item.id)} />
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {rest.map((item) => (
-          <SmallPick key={item.id} item={item} on={selected.has(item.id)} onClick={() => onToggle(item.id)} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))', gap: 10 }}>
+        {items.map((item) => (
+          <Pick key={item.id} item={item} on={selected.has(item.id)} onClick={() => onToggle(item.id)} />
         ))}
       </div>
     </div>
   );
 }
 
-function BigPick({ item, on, onClick }) {
+function Pick({ item, on, onClick }) {
   return (
     <button
       type="button"
@@ -269,33 +236,6 @@ function BigPick({ item, on, onClick }) {
           {item.isNational === true ? 'National side' : item.isNational === false ? 'Club' : item.country || 'International'}
         </div>
       </div>
-    </button>
-  );
-}
-
-function SmallPick({ item, on, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '7px 12px 7px 8px',
-        borderRadius: 11,
-        cursor: 'pointer',
-        fontSize: 13.5,
-        fontWeight: 600,
-        background: on ? 'var(--accent-soft)' : 'var(--card)',
-        border: `1px solid ${on ? 'var(--accent)' : 'var(--line)'}`,
-        color: on ? 'var(--accent-txt)' : 'var(--fg)',
-      }}
-    >
-      <Crest crest={item.crest} short={item.short} color={item.color} name={item.name} size={24} radius={8} fontSize={9} />
-      {item.name}
-      <i className={on ? 'ph-fill ph-check' : 'ph ph-plus'} style={{ fontSize: 13, opacity: on ? 1 : 0.5 }} />
     </button>
   );
 }
