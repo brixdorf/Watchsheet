@@ -1,6 +1,7 @@
 import express from 'express';
 import { all, get, run, tx } from '../db/index.js';
 import { requireAuth } from '../lib/session.js';
+import { liveSince } from '../lib/activity.js';
 
 export const catalogRouter = express.Router();
 catalogRouter.use(requireAuth);
@@ -10,8 +11,9 @@ catalogRouter.use(requireAuth);
  *
  * Everything the provider resolved is offered to everyone: the seeded list was one person's
  * starting point, not a shared assumption, so any user can follow any team or competition we
- * hold, at any time, without a server-side change. Ordering is by rough worldwide popularity
- * so the names most people are looking for are the ones they see first.
+ * hold, at any time, without a server-side change. Competitions are ordered by whether they
+ * are actually being played, then by rough worldwide popularity, so the names most people
+ * are looking for lead and finished tournaments fall away on their own.
  *
  * Following is a filter on the feed, nothing more — it never implies a match was watched.
  */
@@ -50,15 +52,17 @@ const competitionRows = (uid) =>
             c.country_name AS country, c.popularity, c.is_seed AS suggested,
             EXISTS(SELECT 1 FROM follows f
                     WHERE f.user_id = ? AND f.kind = 'competition' AND f.entity_id = c.id) AS following,
+            (SELECT MAX(m.kickoff_utc) FROM matches m WHERE m.competition_id = c.id) >= ? AS live,
             (SELECT COUNT(*) FROM watch_logs wl
                JOIN matches m ON m.id = wl.match_id
               WHERE wl.user_id = ? AND wl.watched = 1 AND m.competition_id = c.id) AS watched
        FROM competitions c
       WHERE c.resolved = 1
-      ORDER BY c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
+      ORDER BY live DESC, c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
     uid,
+    liveSince(),
     uid,
-  ).map((r) => ({ ...r, following: !!r.following, suggested: !!r.suggested }));
+  ).map((r) => ({ ...r, following: !!r.following, suggested: !!r.suggested, live: !!r.live }));
 
 catalogRouter.get('/teams', (req, res) => res.json({ teams: teamRows(req.user.id) }));
 
@@ -79,17 +83,31 @@ catalogRouter.get('/suggestions', (req, res) => {
   });
 });
 
-/** Competition pills for the search filter — only ones we actually hold matches for. */
-catalogRouter.get('/filters', (req, res) => {
-  const uid = req.user.id;
-  const competitions = all(
+/**
+ * Competition pills for the search filter.
+ *
+ * Yours, and only the ones being played: a strip of forty leagues is not a filter, and half
+ * of them finished months ago. An account that followed nothing, or follows nothing with a
+ * fixture in the window, falls back to whatever is live so the strip is never just "All".
+ */
+const filterPills = (uid, minePlayed) =>
+  all(
     `SELECT c.id, ${COMP_NAME} AS name, c.short, COUNT(m.id) AS matches
        FROM competitions c
        JOIN matches m ON m.competition_id = c.id
       WHERE c.resolved = 1
+        ${minePlayed ? `AND EXISTS(SELECT 1 FROM follows f
+                    WHERE f.user_id = ? AND f.kind = 'competition' AND f.entity_id = c.id)` : ''}
       GROUP BY c.id
+     HAVING MAX(m.kickoff_utc) >= ?
       ORDER BY c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
+    ...(minePlayed ? [uid, liveSince()] : [liveSince()]),
   );
+
+catalogRouter.get('/filters', (req, res) => {
+  const uid = req.user.id;
+  const mine = filterPills(uid, true);
+  const competitions = mine.length ? mine : filterPills(uid, false);
   const customCount = get(
     'SELECT COUNT(*) AS n FROM matches WHERE is_custom = 1 AND owner_user_id = ?',
     uid,
