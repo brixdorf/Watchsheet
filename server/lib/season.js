@@ -7,10 +7,11 @@
  * to instead of the one that just ended: the 2026 World Cup opened on 11 June and is 26/27
  * throughout, rather than being split across the final and the group stage.
  */
+const startYear = (d) => (d.getMonth() >= 5 ? d.getFullYear() : d.getFullYear() - 1);
+
 export function seasonIdFor(input) {
   const d = input instanceof Date ? input : new Date(input);
-  const year = d.getFullYear();
-  const start = d.getMonth() >= 5 ? year : year - 1;
+  const start = startYear(d);
   const p = (n) => String(n % 100).padStart(2, '0');
   return `${p(start)}/${p(start + 1)}`;
 }
@@ -30,5 +31,14 @@ export const currentSeason = () => seasonIdFor(new Date());
  */
 export const DATA_FLOOR_MS = Date.parse('2026-06-01T00:00:00Z');
 
-/** The earliest provider season worth requesting, matching the floor above. */
-export const MIN_PROVIDER_SEASON = 2026;
+/**
+ * The season number the provider uses for the one being played now: the year it started,
+ * so 26/27 is 2026.
+ *
+ * The rotation asks for this rather than whatever a competition last advertised. Those
+ * numbers are recorded once at resolve time and never revisited, so a dozen of them still
+ * point at 2023 to 2025 and would re-import a back catalogue that the floor then deletes,
+ * paying for it out of the daily budget either way. Derived from the clock rather than
+ * pinned to a constant, so nothing needs editing when the season turns over.
+ */
+export const currentProviderSeason = (now = new Date()) => startYear(now);

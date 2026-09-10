@@ -1,5 +1,5 @@
 import { all, get, run, tx } from '../db/index.js';
-import { DATA_FLOOR_MS, MIN_PROVIDER_SEASON } from '../lib/season.js';
+import { DATA_FLOOR_MS, currentProviderSeason } from '../lib/season.js';
 import { BudgetExhaustedError, remaining } from './budget.js';
 import { listMatches, rowsOf, totalOf } from './client.js';
 import { normalizeMatch } from './normalize.js';
@@ -219,9 +219,11 @@ export async function syncRotation({ maxRequests = Infinity, season = null, log 
   for (const comp of rotationQueue()) {
     if (spent >= maxRequests) break;
 
+    // A competition that advertises a season ahead of this one is taken at its word: the
+    // Asian Cup is a 2027 tournament and there is no 2026 edition to ask for.
     const seasonYear =
       season ??
-      Math.max(comp.provider_season ?? 0, MIN_PROVIDER_SEASON);
+      Math.max(comp.provider_season ?? 0, currentProviderSeason());
 
     while (spent < maxRequests) {
       if (remaining() < 1) throw new BudgetExhaustedError();
