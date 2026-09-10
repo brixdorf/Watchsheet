@@ -74,10 +74,12 @@ export const resendProvider = {
       tags: [{ name: 'category', value: 'signin_code' }],
     };
     if (config.mail.replyTo) message.replyTo = config.mail.replyTo;
-    // One key per issued code, so the retry below can never deliver a second copy.
-    if (codeId) message.idempotencyKey = `signin-code/${codeId}`;
 
-    const send = () => clientFor(config.mail.resendApiKey).emails.send(message);
+    // One key per issued code, so the retry below cannot deliver a second copy. It belongs
+    // in the send options rather than the message: the SDK whitelists the message fields it
+    // forwards, and reads this one only from the second argument.
+    const options = codeId ? { idempotencyKey: `signin-code/${codeId}` } : {};
+    const send = () => clientFor(config.mail.resendApiKey).emails.send(message, options);
 
     let { data, error } = await send();
     // The account limit is 10 requests a second. A user who trips it would otherwise have to
