@@ -11,7 +11,7 @@ import { animateScreen } from '../lib/anim.js';
  */
 
 const FEATURES = [
-  ['ph ph-check-circle', 'One tap = watched', 'Notes and a 1–5 rating are optional, whenever.'],
+  ['ph ph-check-circle', 'Mark matches watched in one tap', 'Add ratings and notes if you like.'],
   ['ph ph-heart', 'Follow teams & competitions', 'Their fixtures land in one feed, ready to tick off.'],
   ['ph ph-chart-bar', 'Season by season, forever', "Streaks, most-watched sides, and stats you didn't ask for."],
 ];
@@ -203,7 +203,7 @@ export function Onboarding({ onSignedIn }) {
               on the record.
             </div>
             <div style={{ color: 'var(--dim)', fontSize: 14.5, marginBottom: 22 }}>
-              A private logbook for football. One tap to mark a match watched. Notes and ratings only if you feel like it.
+              A private logbook for football.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
               {FEATURES.map(([icon, title, sub]) => (
@@ -293,7 +293,7 @@ export function Onboarding({ onSignedIn }) {
           <div data-anim="row" style={card}>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em', marginBottom: 4 }}>Check your inbox</div>
             <div style={{ color: 'var(--dim)', fontSize: 13.5, marginBottom: 20 }}>
-              Six digits sent to <span style={{ color: 'var(--fg)' }}>{email.trim()}</span>.
+              Six digit code sent to <span style={{ color: 'var(--fg)' }}>{email.trim()}</span>.
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0,1fr))', gap: 8, marginBottom: 14 }}>
