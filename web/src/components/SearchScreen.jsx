@@ -35,6 +35,10 @@ export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpe
     };
   }, [query, competition, season]);
 
+  // Tapping the pill that is already on clears it, which is what the "All" pill used to be
+  // for. One less chip, and no pill that means the absence of the others.
+  const pick = (id) => setCompetition((current) => (current === id ? null : id));
+
   // These results were fetched here, so anything marked watched since has to be layered
   // back over them, or a row would revert the moment its sheet closed.
   const matches = useMemo(() => {
@@ -55,16 +59,13 @@ export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpe
       </div>
 
       <div className="ws-strip" style={{ marginBottom: 18 }}>
-        <FilterPill active={competition === null} onClick={() => setCompetition(null)}>
-          All
-        </FilterPill>
         {filters.customCount > 0 && (
-          <FilterPill active={competition === -1} onClick={() => setCompetition(-1)}>
+          <FilterPill active={competition === -1} onClick={() => pick(-1)}>
             Custom
           </FilterPill>
         )}
         {filters.competitions.map((c) => (
-          <FilterPill key={c.id} active={competition === c.id} onClick={() => setCompetition(c.id)}>
+          <FilterPill key={c.id} active={competition === c.id} onClick={() => pick(c.id)}>
             {c.name}
           </FilterPill>
         ))}
