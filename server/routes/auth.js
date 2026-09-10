@@ -11,7 +11,13 @@ import {
   verifyCode,
   RESEND_COOLDOWN_MS,
 } from '../lib/otp.js';
-import { clearSessionCookie, createSession, destroySession, setSessionCookie } from '../lib/session.js';
+import {
+  clearSessionCookie,
+  createSession,
+  destroySession,
+  requireAuth,
+  setSessionCookie,
+} from '../lib/session.js';
 
 export const authRouter = express.Router();
 
@@ -35,6 +41,18 @@ authRouter.get('/me', (req, res) => {
     followCount: req.user ? followCount(req.user.id) : 0,
     localDelivery: isLocalDelivery(),
   });
+});
+
+/**
+ * Rename. Held to the same two-character floor sign-up uses, so the rule lives in one
+ * shape even though it is checked in two places.
+ */
+authRouter.patch('/me', requireAuth, (req, res) => {
+  const name = String(req.body?.name ?? '').trim().slice(0, 80);
+  if (name.length < 2) return res.status(400).json({ error: 'Names need at least two characters.' });
+
+  run('UPDATE users SET name = ? WHERE id = ?', name, req.user.id);
+  res.json({ user: publicUser({ ...req.user, name }) });
 });
 
 authRouter.post('/request-code', async (req, res) => {

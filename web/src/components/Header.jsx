@@ -42,6 +42,7 @@ export function Header({
   onOpenExport,
   onOpenCustom,
   onOpenAdmin,
+  onOpenAccount,
   onLogout,
 }) {
   const [seasonOpen, setSeasonOpen] = useState(false);
@@ -197,6 +198,9 @@ export function Header({
                     {user.email}
                   </div>
                 </div>
+                <button type="button" className="ws-menu-item" onClick={() => { onOpenAccount(); closeAll.current(); }}>
+                  <i className="ph ph-user-circle" style={{ fontSize: 16, color: 'var(--dim)' }} /> Your account
+                </button>
                 <button type="button" className="ws-menu-item" onClick={() => { onOpenExport(); closeAll.current(); }}>
                   <i className="ph ph-download-simple" style={{ fontSize: 16, color: 'var(--dim)' }} /> Export history
                 </button>

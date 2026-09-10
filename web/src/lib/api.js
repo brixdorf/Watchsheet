@@ -50,6 +50,7 @@ export const api = {
   requestCode: (email, name) => request('/auth/request-code', { method: 'POST', body: { email, name } }),
   verifyCode: (email, code) => request('/auth/verify', { method: 'POST', body: { email, code } }),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  updateProfile: (name) => request('/auth/me', { method: 'PATCH', body: { name } }),
 
   feed: () => request('/matches/feed'),
   search: (params) => request(`/matches/search${qs(params)}`),

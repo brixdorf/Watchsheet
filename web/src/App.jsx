@@ -6,6 +6,7 @@ import { seasonIdFor } from './lib/format.js';
 
 import { FollowPicker } from './components/FollowPicker.jsx';
 import { CustomMatch } from './components/CustomMatch.jsx';
+import { AccountModal } from './components/AccountModal.jsx';
 import { ExportModal } from './components/ExportModal.jsx';
 import { Following } from './components/Following.jsx';
 import { Header } from './components/Header.jsx';
@@ -374,6 +375,7 @@ export default function App() {
         onOpenExport={() => setModal('export')}
         onOpenCustom={() => setModal('custom')}
         onOpenAdmin={() => setTab('admin')}
+        onOpenAccount={() => setModal('account')}
         onLogout={logout}
       />
 
@@ -457,6 +459,16 @@ export default function App() {
       {modal === 'custom' && <CustomMatch onClose={() => setModal(null)} onSave={addCustom} />}
       {modal === 'export' && (
         <ExportModal seasons={seasons} season={season} onClose={() => setModal(null)} />
+      )}
+      {modal === 'account' && (
+        <AccountModal
+          user={user}
+          onSaved={(next) => {
+            setUser(next);
+            flash('Name updated.');
+          }}
+          onClose={() => setModal(null)}
+        />
       )}
 
       <Toast message={toast?.message} tone={toast?.tone} />
