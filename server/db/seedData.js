@@ -32,6 +32,10 @@ export const SEED_COMPETITIONS = [
   { name: 'Serie A', short: 'SEA', aliases: [], country: 'IT' },
   { name: 'Ligue 1', short: 'LIG', aliases: ['Ligue 1 McDonalds'], country: 'FR' },
   { name: 'Copa Libertadores', short: 'LIB', aliases: ['CONMEBOL Libertadores'] },
+  // The provider files this as plain "Serie A", so the country hint is doing the same job
+  // here that it does for the two Super Cups: it is what keeps this off Italy's league.
+  { name: 'Brasileirão', short: 'BRA', aliases: ['Serie A', 'Campeonato Brasileiro Série A', 'Brasileirao'], country: 'BR' },
+  { name: 'MLS', short: 'MLS', aliases: ['Major League Soccer'], country: 'US' },
   { name: 'Europa League', short: 'UEL', aliases: ['UEFA Europa League'] },
   { name: 'AFC Champions League Elite', short: 'ACLE', aliases: ['AFC Champions League'] },
   { name: 'Conference League', short: 'UECL', aliases: ['UEFA Europa Conference League', 'UEFA Conference League'] },

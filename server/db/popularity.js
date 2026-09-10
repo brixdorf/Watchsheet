@@ -27,7 +27,8 @@ const TEAM_ORDER = [
 const COMPETITION_ORDER = [
   'FIFA World Cup', 'Champions League', 'Premier League', 'LaLiga', 'EURO', 'Serie A',
   'Bundesliga', 'Copa America', 'Ligue 1', 'Europa League', 'Copa Libertadores',
-  'FIFA Club World Cup', 'Africa Cup of Nations', 'FA Cup', 'Copa del Rey',
+  'FIFA Club World Cup', 'Brasileirao|BR', 'MLS|US', 'Africa Cup of Nations', 'FA Cup',
+  'Copa del Rey',
   'UEFA Nations League A', 'Asian Cup', 'CONCACAF Gold Cup', 'EFL Cup', 'Conference League',
   'UEFA Super Cup', 'Coppa Italia', 'DFB Pokal', 'Supercopa de Espana',
   'AFC Champions League Elite', 'Community Shield', 'Coupe de France', 'Indian Super League',
