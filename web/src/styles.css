@@ -128,6 +128,36 @@ textarea::placeholder {
   }
 }
 
+/**
+ * The nine odd stats.
+ *
+ * Fixed columns rather than auto-fill, because nine does not divide by four: the tiles were
+ * landing 4 + 4 + 1, leaving the last one alone beside three empty tracks. Three by three
+ * squares off exactly, and at the two-column width the first tile takes the full row so
+ * the remaining eight pair up cleanly.
+ */
+.ws-silly {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 560px) {
+  .ws-silly {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .ws-silly > :first-child {
+    grid-column: span 2;
+  }
+}
+@media (min-width: 900px) {
+  .ws-silly {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .ws-silly > :first-child {
+    grid-column: auto;
+  }
+}
+
 /* ---- interaction states (were style-hover / style-focus on the canvas) ---- */
 
 .ws-field {

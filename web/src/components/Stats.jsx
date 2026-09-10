@@ -159,7 +159,7 @@ export function Stats({ stats, seasonLabel }) {
         <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-.02em' }}>Stats nobody asked for</div>
         <div style={{ height: 1, flex: 1, background: 'var(--line)' }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(232px, 1fr))', gap: 10 }}>
+      <div className="ws-silly">
         {silly.map((s) => (
           <div
             key={s.label}
