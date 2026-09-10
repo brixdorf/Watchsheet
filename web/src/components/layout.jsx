@@ -1,4 +1,78 @@
+import { useRef } from 'react';
+
 /** Small shared layout pieces, so the screens stay about their own content. */
+
+/**
+ * The search field used on the Search and Following tabs.
+ *
+ * type="search" gives the browser's own cancel button, which is drawn by the platform and
+ * ignores every colour token the app defines. It is suppressed in styles.css and replaced
+ * with the same ph-x the modals close on, so the control looks like it belongs here and is
+ * there on every browser rather than only on WebKit.
+ */
+export function SearchField({ value, onChange, placeholder, label, size = 'md' }) {
+  const input = useRef(null);
+  const big = size === 'md';
+  const pad = big ? { padding: '14px 44px 14px 44px', borderRadius: 14, fontSize: 15.5 } : { padding: '9px 36px 9px 36px', borderRadius: 10, fontSize: 14 };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <i
+        className="ph ph-magnifying-glass"
+        style={{
+          position: 'absolute',
+          left: big ? 15 : 13,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: big ? 18 : 15,
+          color: 'var(--dim)',
+          pointerEvents: 'none',
+        }}
+      />
+      <input
+        ref={input}
+        className="ws-field ws-field--card"
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+        style={pad}
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label="Clear search"
+          title="Clear search"
+          onClick={() => {
+            onChange('');
+            input.current?.focus();
+          }}
+          style={{
+            position: 'absolute',
+            right: big ? 9 : 7,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: big ? 28 : 23,
+            height: big ? 28 : 23,
+            borderRadius: 8,
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--dim)',
+            fontSize: big ? 14 : 12,
+          }}
+          className="ws-pop"
+        >
+          <i className="ph-bold ph-x" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 
 export function SectionHeading({ title, sub, meta }) {
   return (

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
 import { MatchRow } from './MatchRow.jsx';
-import { FilterPill, MatchGrid, Spinner } from './layout.jsx';
+import { FilterPill, MatchGrid, SearchField, Spinner } from './layout.jsx';
 
 /**
  * Search runs against local SQLite only. It never reaches the provider, which is what
@@ -45,19 +45,12 @@ export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpe
 
   return (
     <div>
-      <div style={{ position: 'relative', marginBottom: 14 }}>
-        <i
-          className="ph ph-magnifying-glass"
-          style={{ position: 'absolute', left: 15, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: 'var(--dim)' }}
-        />
-        <input
-          className="ws-field ws-field--card"
-          type="search"
+      <div style={{ marginBottom: 14 }}>
+        <SearchField
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
           placeholder="Search a team, a competition, a date…"
-          aria-label="Search matches"
-          style={{ padding: '14px 14px 14px 44px', borderRadius: 14, fontSize: 15.5 }}
+          label="Search matches"
         />
       </div>
 

@@ -147,6 +147,14 @@ textarea::placeholder {
   background: var(--card);
 }
 
+/* The platform's own cancel button is drawn by the browser and ignores every colour token
+   here, so SearchField draws its own. */
+.ws-field[type='search']::-webkit-search-cancel-button,
+.ws-field[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .ws-primary {
   border: none;
   border-radius: 13px;

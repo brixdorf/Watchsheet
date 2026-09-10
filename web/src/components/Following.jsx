@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Crest } from './Crest.jsx';
-import { EmptyNote, FilterPill } from './layout.jsx';
+import { EmptyNote, FilterPill, SearchField } from './layout.jsx';
 
 /**
  * Teams and competitions to follow.
@@ -50,26 +50,13 @@ export function Following({ teams, competitions, onToggleFollow }) {
         <FilterPill active={onlyFollowed} onClick={() => setOnlyFollowed((v) => !v)}>
           Followed
         </FilterPill>
-        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-          <i
-            className="ph ph-magnifying-glass"
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: 15,
-              color: 'var(--dim)',
-            }}
-          />
-          <input
-            className="ws-field ws-field--card"
-            type="search"
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <SearchField
+            size="sm"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={setQuery}
             placeholder="Search every team and competition…"
-            aria-label="Search the catalog"
-            style={{ padding: '9px 12px 9px 36px', borderRadius: 10, fontSize: 14 }}
+            label="Search the catalog"
           />
         </div>
       </div>
