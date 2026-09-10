@@ -1,7 +1,7 @@
 import express from 'express';
 import { all, get, run, tx } from '../db/index.js';
 import { requireAuth } from '../lib/session.js';
-import { liveSince } from '../lib/activity.js';
+import { liveSince, playingWindow } from '../lib/activity.js';
 
 export const catalogRouter = express.Router();
 catalogRouter.use(requireAuth);
@@ -13,7 +13,9 @@ catalogRouter.use(requireAuth);
  * starting point, not a shared assumption, so any user can follow any team or competition we
  * hold, at any time, without a server-side change. Competitions are ordered by whether they
  * are actually being played, then by rough worldwide popularity, so the names most people
- * are looking for lead and finished tournaments fall away on their own.
+ * are looking for lead and finished tournaments fall away on their own. Teams are ordered
+ * the same way, on whether they have a fixture in the next few days, which is what keeps
+ * club sides ahead of national ones outside an international window.
  *
  * Following is a filter on the feed, nothing more. It never implies a match was watched.
  */
@@ -24,27 +26,35 @@ const MAX_BULK_FOLLOWS = 200;
 const TEAM_NAME = 'COALESCE(t.seed_name, t.name)';
 const COMP_NAME = 'COALESCE(c.seed_name, c.name)';
 
-const teamRows = (uid) =>
-  all(
+const teamRows = (uid) => {
+  const [from, to] = playingWindow();
+  return all(
     `SELECT t.id, ${TEAM_NAME} AS name, t.short, t.color, t.logo_url AS crest,
             t.is_national AS isNational, t.popularity, t.is_seed AS suggested,
             EXISTS(SELECT 1 FROM follows f
                     WHERE f.user_id = ? AND f.kind = 'team' AND f.entity_id = t.id) AS following,
+            EXISTS(SELECT 1 FROM matches m
+                    WHERE (m.home_team_id = t.id OR m.away_team_id = t.id)
+                      AND m.kickoff_utc BETWEEN ? AND ?) AS playing,
             (SELECT COUNT(*) FROM watch_logs wl
                JOIN matches m ON m.id = wl.match_id
               WHERE wl.user_id = ? AND wl.watched = 1
                 AND (m.home_team_id = t.id OR m.away_team_id = t.id)) AS watched
        FROM teams t
       WHERE t.resolved = 1
-      ORDER BY t.popularity DESC, ${TEAM_NAME} COLLATE NOCASE ASC`,
+      ORDER BY playing DESC, t.popularity DESC, ${TEAM_NAME} COLLATE NOCASE ASC`,
     uid,
+    from,
+    to,
     uid,
   ).map((r) => ({
     ...r,
     following: !!r.following,
     isNational: !!r.isNational,
     suggested: !!r.suggested,
+    playing: !!r.playing,
   }));
+};
 
 const competitionRows = (uid) =>
   all(

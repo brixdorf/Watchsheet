@@ -17,3 +17,20 @@ export const LIVE_WINDOW_MS = 45 * 24 * 60 * 60 * 1000;
 
 /** Kickoffs at or after this instant count a competition as live. */
 export const liveSince = () => Date.now() - LIVE_WINDOW_MS;
+
+/**
+ * Whether a team is in its own season right now, which decides club against country.
+ *
+ * The competition window is no use here. It asks whether a competition has a fixture within
+ * forty-five days, and every national side passes that through the Nations League, so
+ * reusing it would rank Brazil above Arsenal in September.
+ *
+ * Ten days forward separates the two calendars instead, because they are deliberately kept
+ * apart. Clubs play weekly, so they sit inside it all season; during an international break
+ * the domestic fixtures stop and the gap stretches past three weeks, which drops the clubs
+ * out just as the national sides come in. It inverts itself, so a World Cup needs no edit.
+ */
+export const PLAYING_SOON_MS = 10 * 24 * 60 * 60 * 1000;
+
+/** The window a team must have a fixture in to count as playing. */
+export const playingWindow = (now = Date.now()) => [now - 2 * 86_400_000, now + PLAYING_SOON_MS];
