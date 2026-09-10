@@ -35,14 +35,18 @@ export function Stats({ stats, seasonLabel }) {
   const hours = Math.floor(stats.minutes / 60);
   const days = Math.floor(hours / 24);
   const gapFrom = stats.gapFrom ? new Date(stats.gapFrom) : null;
+  const repeated = stats.commonScore && stats.commonScore.n > 1 ? stats.commonScore : null;
 
+  // Nine, laid out three to a row: what happened on the pitch, then the viewing habit,
+  // then the running totals. Reordering here reorders the grid.
   const silly = [
     {
-      icon: 'ph-fill ph-moon-stars',
-      label: 'Insomniac index',
-      value: stats.night,
-      sub: 'kick-offs at 9pm or later. Sleep is for people without a backlog.',
+      icon: 'ph-fill ph-boxing-glove',
+      label: 'Biggest hammering',
+      value: stats.rout ? stats.rout.score : 'none yet',
+      sub: stats.rout ? `${stats.rout.label}. You watched all of it.` : 'nothing one-sided so far',
     },
+    { icon: 'ph-fill ph-lightning', label: 'Chaos merchant', value: stats.chaos, sub: 'matches with five goals or more' },
     {
       icon: 'ph-fill ph-hourglass',
       label: '0–0s endured',
@@ -50,12 +54,17 @@ export function Stats({ stats, seasonLabel }) {
       sub: stats.nils ? `that is ${stats.nils * 115} minutes of nothing` : 'you have been lucky',
     },
     {
+      icon: 'ph-fill ph-moon-stars',
+      label: 'Insomniac index',
+      value: stats.night,
+      sub: 'kick-offs at 9pm or later. Sleep is for people without a backlog.',
+    },
+    {
       icon: 'ph-fill ph-armchair',
       label: 'Sofa marathon',
       value: `${stats.maxDay} in a day`,
       sub: 'your personal record for consecutive grass',
     },
-    { icon: 'ph-fill ph-lightning', label: 'Chaos merchant', value: stats.chaos, sub: 'matches with five goals or more' },
     {
       icon: 'ph-fill ph-bed',
       label: 'Longest dry spell',
@@ -71,16 +80,17 @@ export function Stats({ stats, seasonLabel }) {
       sub: 'staring at a rectangle of turf',
     },
     {
+      icon: 'ph-fill ph-repeat',
+      label: 'Deja vu',
+      // One sighting is a match, not a pattern, so it stays quiet until a scoreline repeats.
+      value: repeated ? repeated.score : 'nothing twice',
+      sub: repeated ? `seen ${repeated.n} times` : 'no scoreline has come round yet',
+    },
+    {
       icon: 'ph-fill ph-compass',
       label: 'Neutral watches',
       value: stats.neutral,
       sub: 'games with no dog in the fight',
-    },
-    {
-      icon: 'ph-fill ph-skull',
-      label: 'Harshest verdict',
-      value: stats.worst ? `${stats.worst.home}–${stats.worst.away}` : 'none',
-      sub: stats.worst ? `${stats.worst.rating}/5. You were not kind.` : 'you have rated nothing yet',
     },
   ];
 

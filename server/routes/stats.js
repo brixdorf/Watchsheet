@@ -167,9 +167,35 @@ statsRouter.get('/', (req, res) => {
 
   const rated = rows.filter((r) => (r.rating ?? 0) > 0);
   const avg = rated.length ? rated.reduce((s, r) => s + r.rating, 0) / rated.length : 0;
-  const worstRow = rated.length
-    ? rated.reduce((lo, r) => (r.rating < lo.rating ? r : lo), rated[0])
-    : null;
+
+  const played = rows.filter((r) => r.home_score != null && r.away_score != null);
+
+  /**
+   * The widest margin sat through. Ties go to the higher-scoring game, then the earlier
+   * one, so there is always exactly one answer: the old "harshest verdict" picked the
+   * lowest rating and had nothing to separate a dozen matches rated 1.
+   */
+  const rout = played.reduce((best, r) => {
+    if (!best) return r;
+    const d = Math.abs(r.home_score - r.away_score);
+    const bd = Math.abs(best.home_score - best.away_score);
+    if (d !== bd) return d > bd ? r : best;
+    return r.home_score + r.away_score > best.home_score + best.away_score ? r : best;
+  }, null);
+
+  /** The scoreline seen most often, counted with the higher half first so 3-1 and 1-3 are one line. */
+  const lines = new Map();
+  for (const r of played) {
+    const hi = Math.max(r.home_score, r.away_score);
+    const lo = Math.min(r.home_score, r.away_score);
+    const key = `${hi}-${lo}`;
+    const seen = lines.get(key);
+    if (seen) seen.n++;
+    else lines.set(key, { key, n: 1, at: r.kickoff_utc });
+  }
+  const common = [...lines.values()].sort(
+    (a, b) => b.n - a.n || Number(b.key.split('-')[0]) - Number(a.key.split('-')[0]) || b.at - a.at,
+  )[0] ?? null;
 
   const topTeams = rank(teamCounts);
   const topComps = rank(compCounts);
@@ -197,14 +223,14 @@ statsRouter.get('/', (req, res) => {
     averageRating: avg,
     topTeams: withMeta(topTeams, teamMeta),
     topCompetitions: withMeta(topComps, compMeta),
-    worst: worstRow
+    rout: rout
       ? {
-          rating: worstRow.rating,
-          home: worstRow.home_short || worstRow.home_label,
-          away: worstRow.away_short || worstRow.away_label,
-          label: `${worstRow.home_label} v ${worstRow.away_label}`,
+          score: `${rout.home_score}-${rout.away_score}`,
+          margin: Math.abs(rout.home_score - rout.away_score),
+          label: `${rout.home_label} v ${rout.away_label}`,
         }
       : null,
+    commonScore: common ? { score: common.key, n: common.n } : null,
     monthly: SEASON_MONTHS.map((m) => ({ month: m, label: MONTHS[m], n: monthly.get(m) ?? 0 })),
   });
 });
