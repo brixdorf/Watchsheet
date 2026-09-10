@@ -126,10 +126,11 @@ charity matches, Soccer Aid, the Durand Cup and the lower Nations League tiers.
 ## What counts as current
 
 Watchsheet holds fixtures from **1 June 2026** onward and drops what came before
-(`DATA_FLOOR_MS` in `server/lib/season.js`). The floor is a kickoff date rather than a season
-id on purpose: the 2026 World Cup opened on 11 June, which the July rollover files under
-25/26, so flooring by season would have kept only its knockout rounds and left a half
-tournament on screen.
+(`DATA_FLOOR_MS` in `server/lib/season.js`). Seasons turn over in June, on the same
+boundary: Europe's domestic seasons finish in late May, so June is where the year actually
+breaks. The two agreeing is what keeps the 2026 World Cup, which opened on 11 June, whole
+inside a single season instead of split across the group stage and the final. Everything
+Watchsheet holds is therefore one season, 26/27.
 
 It is enforced in three places, because any one of them alone would leak:
 

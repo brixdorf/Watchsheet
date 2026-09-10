@@ -5,7 +5,7 @@ import { db, all, run } from './index.js';
 import { isMain } from '../lib/ismain.js';
 import { SEED_COMPETITIONS, SEED_TEAMS } from './seedData.js';
 import { competitionPopularity, teamPopularity, unranked } from './popularity.js';
-import { DATA_FLOOR_MS } from '../lib/season.js';
+import { DATA_FLOOR_MS, seasonIdFor } from '../lib/season.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -69,6 +69,25 @@ function purgeBelowFloor() {
   return Number(result.changes ?? 0);
 }
 
+/**
+ * Re-stamps matches whose stored season disagrees with what the rule says today.
+ *
+ * matches.season is written once at ingest, so a change to the rollover would otherwise
+ * only reach rows synced after it. Runs every boot alongside the purge, costs one scan, and
+ * settles to zero changes the moment the data agrees with the rule.
+ */
+function restampSeasons() {
+  let touched = 0;
+  const rows = all('SELECT id, kickoff_utc, season FROM matches');
+  for (const row of rows) {
+    const season = seasonIdFor(new Date(row.kickoff_utc));
+    if (season === row.season) continue;
+    run('UPDATE matches SET season = ? WHERE id = ?', season, row.id);
+    touched++;
+  }
+  return touched;
+}
+
 export function migrate() {
   db.exec(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
   ensureColumn('teams', 'popularity', 'INTEGER NOT NULL DEFAULT 0');
@@ -82,12 +101,13 @@ export function migrate() {
   if (gaps.teams.length || gaps.competitions.length) {
     console.warn('Seeds with no popularity rank:', [...gaps.competitions, ...gaps.teams].join(', '));
   }
-  return { ranked: applyPopularity(), purged: purgeBelowFloor() };
+  return { ranked: applyPopularity(), purged: purgeBelowFloor(), restamped: restampSeasons() };
 }
 
 if (isMain(import.meta.url)) {
   const result = migrate();
   console.log(
-    `Schema applied. ${result.ranked} popularity ranks written, ${result.purged} pre-floor fixtures dropped.`,
+    `Schema applied. ${result.ranked} popularity ranks written, ${result.purged} pre-floor `
+      + `fixtures dropped, ${result.restamped} seasons re-stamped.`,
   );
 }

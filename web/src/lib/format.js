@@ -73,11 +73,11 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-/** Season ids run July to June, so 2026-09-05 is '26/27'. Mirrors the server. */
+/** Season ids run June to May, so 2026-09-05 is '26/27'. Mirrors the server. */
 export function seasonIdFor(input) {
   const d = input instanceof Date ? input : new Date(input);
   const year = d.getFullYear();
-  const start = d.getMonth() >= 6 ? year : year - 1;
+  const start = d.getMonth() >= 5 ? year : year - 1;
   const p = (n) => String(n % 100).padStart(2, '0');
   return `${p(start)}/${p(start + 1)}`;
 }
