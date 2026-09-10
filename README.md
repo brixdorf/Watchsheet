@@ -114,10 +114,18 @@ within weeks of its final. Nothing needs re-editing when qualifiers come round a
 
 The rank itself is stored on the row and re-applied on every boot from the ordered lists in
 `server/db/popularity.js`, so it decides the order within the live set and among the dormant
-ones. Changing it is a one-file edit. Teams are ordered by popularity alone.
+ones. Changing it is a one-file edit.
 
-The search filter strip narrows further still: it offers the competitions you follow **that
-are live**, falling back to whatever is live if you follow none of them.
+Teams work the same way on a tighter window: one leads if it has a fixture in the **next ten
+days**. The competition window is no use here, because every national side passes it through
+the Nations League. The two calendars are kept apart on purpose, so clubs sit inside ten days
+all season and drop out when the domestic fixtures stop for an international break, exactly
+as the national sides come in. It inverts itself, so a World Cup needs no edit.
+
+The search filter strip is deliberately **not** narrowed. It offers every competition holding
+matches, live ones first. Ordering and filtering are different jobs, and search is where you
+go to find something you have already watched: a tournament is at its most searchable just
+after it finishes.
 
 Six of the requested competitions and three of the teams are not carried by the provider at
 all and are simply absent. **Add custom match** covers them, which is the intended route for
@@ -136,11 +144,14 @@ It is enforced in three places, because any one of them alone would leak:
 
 - `writePage` in `server/sync/fixtures.js` drops pre-floor rows as they arrive. Both sync
   lanes write through it, so the guard is stated once.
-- The rotation never asks the provider for a season before 2026. Twelve competitions still
-  carried a newest-advertised season of 2023-2025, and left alone they would re-import their
-  back catalogue on every pass and pay for it out of the daily budget.
-- `migrate()` deletes pre-floor fixtures on every boot. It is a cheap indexed delete, and
-  stating the invariant somewhere it gets re-checked beats a one-shot migration.
+- The rotation asks for the season being played, derived from the clock rather than pinned
+  to a constant. A dozen competitions still carry a newest-advertised season of 2023-2025,
+  and taken at their word they would re-import a back catalogue on every pass and pay for it
+  out of the daily budget. A competition advertising a season *ahead* of this one is still
+  believed: the Asian Cup is a 2027 tournament with no 2026 edition.
+- `migrate()` deletes pre-floor fixtures on every boot, and re-stamps any row whose stored
+  season disagrees with the rule. Both are cheap and settle to zero changes; stating an
+  invariant somewhere it gets re-checked beats a one-shot migration.
 
 Custom matches are exempt throughout. A record of a game someone watched is theirs, whenever
 it was played; the floor is about seeded provider data.
@@ -209,7 +220,7 @@ server/
   db/                schema, migrations, the seed lists, the popularity ranks
   lib/admin.js       who may open the admin screen
   lib/activity.js    whether a competition is currently being played
-  lib/season.js      season ids, and the date data starts from
+  lib/season.js      season ids, the June rollover, and the date data starts from
   lib/email/         provider factory, console and Resend transports, the OTP template
   lib/               session, otp, name matching, shared match reads
   routes/            auth, catalog, matches, logs, stats, export, admin
