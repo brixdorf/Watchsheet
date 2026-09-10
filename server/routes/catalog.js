@@ -86,33 +86,34 @@ catalogRouter.get('/suggestions', (req, res) => {
 /**
  * Competition pills for the search filter.
  *
- * Yours, and only the ones being played: a strip of forty leagues is not a filter, and half
- * of them finished months ago. An account that followed nothing, or follows nothing with a
- * fixture in the window, falls back to whatever is live so the strip is never just "All".
+ * Every competition holding matches, the ones being played first.
+ *
+ * Ordering and filtering are not the same job, and this strip previously did both: it hid
+ * anything without a fixture in the live window, and scoped what was left to your follows.
+ * That is right for a catalog and wrong for search, which is where you go to find a match
+ * you have already watched. A tournament is at its most searchable just after it finishes,
+ * and the World Cup dropped off this strip eight days after the final.
+ *
+ * The join keeps out competitions holding nothing, so no pill can lead to an empty result.
  */
-const filterPills = (uid, minePlayed) =>
+const filterPills = () =>
   all(
-    `SELECT c.id, ${COMP_NAME} AS name, c.short, COUNT(m.id) AS matches
+    `SELECT c.id, ${COMP_NAME} AS name, c.short, COUNT(m.id) AS matches,
+            MAX(m.kickoff_utc) >= ? AS live
        FROM competitions c
        JOIN matches m ON m.competition_id = c.id
       WHERE c.resolved = 1
-        ${minePlayed ? `AND EXISTS(SELECT 1 FROM follows f
-                    WHERE f.user_id = ? AND f.kind = 'competition' AND f.entity_id = c.id)` : ''}
       GROUP BY c.id
-     HAVING MAX(m.kickoff_utc) >= ?
-      ORDER BY c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
-    ...(minePlayed ? [uid, liveSince()] : [liveSince()]),
-  );
+      ORDER BY live DESC, c.popularity DESC, ${COMP_NAME} COLLATE NOCASE ASC`,
+    liveSince(),
+  ).map((r) => ({ ...r, live: !!r.live }));
 
 catalogRouter.get('/filters', (req, res) => {
-  const uid = req.user.id;
-  const mine = filterPills(uid, true);
-  const competitions = mine.length ? mine : filterPills(uid, false);
   const customCount = get(
     'SELECT COUNT(*) AS n FROM matches WHERE is_custom = 1 AND owner_user_id = ?',
-    uid,
+    req.user.id,
   ).n;
-  res.json({ competitions, customCount });
+  res.json({ competitions: filterPills(), customCount });
 });
 
 catalogRouter.get('/follows', (req, res) => {
