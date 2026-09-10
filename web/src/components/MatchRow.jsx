@@ -213,6 +213,8 @@ function statusTag(match) {
   if (match.status === 'live') return 'live';
   if (match.status === 'postponed') return 'postponed';
   if (match.status === 'cancelled') return 'cancelled';
-  if (match.homeScore == null) return 'no result';
+  // A finished match with no score means the provider has not settled it yet, which is a
+  // wait rather than a result. Saying "no result" made it read like a goalless draw.
+  if (match.homeScore == null) return 'awaiting result';
   return 'Full time';
 }

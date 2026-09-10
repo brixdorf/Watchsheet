@@ -33,9 +33,6 @@ export const config = {
 
   sync: {
     enabled: bool(process.env.SYNC_ENABLED, true),
-    pastDays: num(process.env.SYNC_PAST_DAYS, 3),
-    futureDays: num(process.env.SYNC_FUTURE_DAYS, 14),
-    maxPagesPerDate: num(process.env.SYNC_MAX_PAGES_PER_DATE, 4),
     slice: num(process.env.SYNC_SLICE, 6),
   },
 

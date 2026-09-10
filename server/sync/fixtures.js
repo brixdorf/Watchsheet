@@ -14,9 +14,9 @@ import { normalizeMatch } from './normalize.js';
  *
  *   Lane A, rotation: each resolved competition is re-pulled in full, oldest first,
  *            a page at a time, with the cursor stored on the row so a budget stop resumes.
- *   Lane B, refresh: matches we already hold that kicked off recently and are not yet
- *            final. Queried as leagueId + date, which is driven entirely by local data, so
- *            it only spends requests where fixtures actually exist.
+ *   Lane B, refresh: matches we already hold that have kicked off and are not yet final.
+ *            Queried as leagueId + date, which is driven entirely by local data, so it only
+ *            spends requests where fixtures actually exist.
  *
  * Lane B runs first: it is small, time-sensitive, and it is what makes "Just played" on
  * the Home tab show real scores.
@@ -121,18 +121,37 @@ function writePage(rows, competitionId) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * (competition, date) pairs holding matches that kicked off in the recent past but are
- * not marked final. One request per pair updates every match in it.
+ * How long a (competition, date) pair is left alone after being fetched, scaled by how old
+ * the match is.
+ *
+ * A game that kicked off an hour ago is worth re-checking often. One from last week that
+ * still has no score almost certainly never will: the provider has stopped returning it,
+ * and asking every half hour would spend the whole day's allowance finding that out again.
  */
-export function staleRefreshTargets({ pastDays = 4 } = {}) {
-  const from = Date.now() - pastDays * DAY_MS;
-  const to = Date.now() + 6 * 3_600_000;
-  return all(
+function backoffMs(ageMs) {
+  if (ageMs < 6 * 3_600_000) return 20 * 60 * 1000;
+  if (ageMs < 2 * DAY_MS) return 3 * 3_600_000;
+  return DAY_MS;
+}
+
+/**
+ * (competition, date) pairs holding matches that have kicked off but are not marked final.
+ * One request per pair updates every match in it.
+ *
+ * There is no lower bound beyond the data floor, on purpose. The old four-day window meant
+ * a fixture the provider was slow to settle simply aged out of view and kept its null score
+ * for good, which the UI then reported as "no result" on a match that had plainly finished.
+ * Newest first, so a backlog never delays today's scores.
+ */
+export function staleRefreshTargets({ now = Date.now() } = {}) {
+  const rows = all(
     `SELECT m.competition_id AS competitionId,
             c.provider_id    AS leagueProviderId,
             c.seed_name      AS competitionName,
             DATE(m.kickoff_utc / 1000, 'unixepoch') AS day,
-            COUNT(*) AS n
+            COUNT(*) AS n,
+            MAX(m.kickoff_utc) AS latestKickoff,
+            MAX(m.updated_at)  AS lastFetched
        FROM matches m
        JOIN competitions c ON c.id = m.competition_id
       WHERE m.is_custom = 0
@@ -141,9 +160,12 @@ export function staleRefreshTargets({ pastDays = 4 } = {}) {
         AND m.status NOT IN ('finished', 'cancelled')
       GROUP BY m.competition_id, day
       ORDER BY day DESC`,
-    from,
-    to,
+    DATA_FLOOR_MS,
+    now + 6 * 3_600_000,
   );
+  // Fetching a pair rewrites every row in it, so the newest updated_at is when we last
+  // asked. Filtered here rather than in SQL because the backoff reads as a rule, not a join.
+  return rows.filter((t) => now - t.lastFetched >= backoffMs(now - t.latestKickoff));
 }
 
 export async function refreshRecent({ maxRequests = Infinity, log = () => {} } = {}) {
@@ -251,6 +273,15 @@ export async function syncRotation({ maxRequests = Infinity, season = null, log 
 /* Orchestration                                                               */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Refresh gets at most half of a run, rounded up, and never fewer than one request.
+ *
+ * Without a share of its own it would take everything whenever a backlog built up, and the
+ * rotation that brings in new fixtures would never advance. Half keeps results landing
+ * promptly without stalling the other lane.
+ */
+const refreshShare = (max) => (Number.isFinite(max) ? Math.max(1, Math.ceil(max / 2)) : max);
+
 /** Runs both lanes within `maxRequests`, refresh first. */
 export async function runSync({ maxRequests = Infinity, season = null, log = () => {} } = {}) {
   let spent = 0;
@@ -258,7 +289,7 @@ export async function runSync({ maxRequests = Infinity, season = null, log = () 
   const result = { refresh: null, rotation: null };
 
   try {
-    result.refresh = await refreshRecent({ maxRequests: maxRequests - spent, log });
+    result.refresh = await refreshRecent({ maxRequests: refreshShare(maxRequests), log });
     spent += result.refresh.spent;
 
     result.rotation = await syncRotation({ maxRequests: maxRequests - spent, season, log });
