@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, all, run } from './index.js';
+import { db, all, run, tx } from './index.js';
 import { isMain } from '../lib/ismain.js';
 import { SEED_COMPETITIONS, SEED_TEAMS } from './seedData.js';
 import { competitionPopularity, teamPopularity, unranked } from './popularity.js';
+import { coreName } from '../lib/names.js';
 import { DATA_FLOOR_MS, seasonIdFor } from '../lib/season.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -88,6 +89,74 @@ function restampSeasons() {
   return touched;
 }
 
+/**
+ * Reunites a seeded team with its own fixtures when resolution split them in two.
+ *
+ * A seed is resolved by name lookup, and the provider can hand back a different id than the
+ * one its own fixtures carry. Milan is the case in hand: the seeded row resolved to
+ * 14300137, while every Milan fixture points at 416923, which arrived later through
+ * ensureTeam as an ordinary provider row called "AC Milan". Both rows are real, both show
+ * in the catalog, and the one people can follow is the one holding nothing.
+ *
+ * coreName already strips the club furniture that separates the two spellings, so the same
+ * helper resolution uses decides identity here. The bar is deliberately high: the seed must
+ * hold no fixtures at all, the candidate must hold some, and there must be exactly one
+ * candidate. National sides are left alone, since every provider row is created as a club.
+ */
+function mergeSplitTeams() {
+  const orphans = all(
+    `SELECT id, seed_name, name FROM teams
+       WHERE is_seed = 1 AND is_national = 0 AND resolved = 1
+         AND NOT EXISTS(SELECT 1 FROM matches m
+                         WHERE m.home_team_id = teams.id OR m.away_team_id = teams.id)`,
+  );
+  if (!orphans.length) return 0;
+
+  const candidates = all(
+    `SELECT id, name, provider_id, logo_url, color FROM teams
+       WHERE is_seed = 0 AND is_national = 0
+         AND EXISTS(SELECT 1 FROM matches m
+                     WHERE m.home_team_id = teams.id OR m.away_team_id = teams.id)`,
+  );
+
+  let merged = 0;
+  for (const seed of orphans) {
+    const core = coreName(seed.seed_name || seed.name);
+    const hits = candidates.filter((c) => coreName(c.name) === core);
+    if (hits.length !== 1) continue;
+    const dup = hits[0];
+
+    tx(() => {
+      // Fixtures move first: matches reference teams(id) ON DELETE SET NULL, so dropping the
+      // duplicate before this would strip the very links being rescued.
+      run('UPDATE matches SET home_team_id = ? WHERE home_team_id = ?', seed.id, dup.id);
+      run('UPDATE matches SET away_team_id = ? WHERE away_team_id = ?', seed.id, dup.id);
+      // Anyone who followed the duplicate keeps their follow, unless they already had both.
+      run(
+        "UPDATE OR IGNORE follows SET entity_id = ? WHERE kind = 'team' AND entity_id = ?",
+        seed.id,
+        dup.id,
+      );
+      run("DELETE FROM follows WHERE kind = 'team' AND entity_id = ?", dup.id);
+      // The provider_id is unique, so the duplicate has to go before the seed can take it.
+      run('DELETE FROM teams WHERE id = ?', dup.id);
+      run(
+        `UPDATE teams SET provider_id = ?,
+                          logo_url = COALESCE(logo_url, ?),
+                          color = COALESCE(color, ?)
+          WHERE id = ?`,
+        dup.provider_id,
+        dup.logo_url,
+        dup.color,
+        seed.id,
+      );
+    });
+    console.log(`Merged duplicate team "${dup.name}" into seeded "${seed.seed_name}".`);
+    merged++;
+  }
+  return merged;
+}
+
 export function migrate() {
   db.exec(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
   ensureColumn('teams', 'popularity', 'INTEGER NOT NULL DEFAULT 0');
@@ -101,13 +170,18 @@ export function migrate() {
   if (gaps.teams.length || gaps.competitions.length) {
     console.warn('Seeds with no popularity rank:', [...gaps.competitions, ...gaps.teams].join(', '));
   }
-  return { ranked: applyPopularity(), purged: purgeBelowFloor(), restamped: restampSeasons() };
+  return {
+    ranked: applyPopularity(),
+    purged: purgeBelowFloor(),
+    restamped: restampSeasons(),
+    merged: mergeSplitTeams(),
+  };
 }
 
 if (isMain(import.meta.url)) {
   const result = migrate();
   console.log(
     `Schema applied. ${result.ranked} popularity ranks written, ${result.purged} pre-floor `
-      + `fixtures dropped, ${result.restamped} seasons re-stamped.`,
+      + `fixtures dropped, ${result.restamped} seasons re-stamped, ${result.merged} teams merged.`,
   );
 }
