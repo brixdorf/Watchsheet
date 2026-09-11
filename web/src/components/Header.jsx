@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { initialsOf } from '../lib/format.js';
+import { useIsPhone } from '../lib/useMedia.js';
 
 const THEMES = [
   ['light', 'ph ph-sun', 'Light'],
@@ -7,7 +8,7 @@ const THEMES = [
   ['system', 'ph ph-desktop', 'System'],
 ];
 
-const TABS = [
+export const TABS = [
   ['home', 'Home', 'ph ph-house'],
   ['search', 'Search', 'ph ph-magnifying-glass'],
   ['following', 'Following', 'ph ph-heart'],
@@ -47,6 +48,10 @@ export function Header({
 }) {
   const [seasonOpen, setSeasonOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Structural, not cosmetic: on a phone the tab row is not rendered here at all, and the
+  // theme picker and Custom match move inside the account menu rather than being duplicated
+  // and hidden. Sizes stay in styles.css where they belong.
+  const isPhone = useIsPhone();
   const closeAll = useRef(() => {});
   closeAll.current = () => {
     setSeasonOpen(false);
@@ -73,17 +78,15 @@ export function Header({
           <img
             src="/logo.svg"
             alt=""
-            style={{
-              width: 62,
-              height: 62,
-              flex: 'none',
-              borderRadius: 18,
-              boxShadow: '0 10px 26px rgba(11,42,168,.4)',
-            }}
+            className="ws-brand-logo"
+            style={{ flex: 'none', borderRadius: 18, boxShadow: '0 10px 26px rgba(11,42,168,.4)' }}
           />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 29, letterSpacing: '-.03em', lineHeight: 1.05 }}>Watchsheet</div>
+            <div className="ws-brand-name" style={{ fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05 }}>
+              Watchsheet
+            </div>
             <div
+              className="ws-brand-tag"
               style={{
                 fontSize: 11.5,
                 fontWeight: 600,
@@ -91,6 +94,7 @@ export function Header({
                 letterSpacing: '.11em',
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
+                overflow: 'hidden',
               }}
             >
               Your season, logged
@@ -98,43 +102,7 @@ export function Header({
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: 3,
-            background: 'var(--card)',
-            border: '1px solid var(--line)',
-            borderRadius: 11,
-          }}
-        >
-          {THEMES.map(([id, icon, title]) => (
-            <button
-              key={id}
-              type="button"
-              title={title}
-              aria-label={title}
-              aria-pressed={theme === id}
-              onClick={() => onTheme(id)}
-              style={{
-                width: 31,
-                height: 27,
-                border: 'none',
-                borderRadius: 8,
-                cursor: 'pointer',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 15,
-                background: theme === id ? 'var(--card2)' : 'transparent',
-                color: theme === id ? 'var(--accent-txt)' : 'var(--dim2)',
-              }}
-            >
-              <i className={icon} />
-            </button>
-          ))}
-        </div>
-
+        {!isPhone && <ThemePicker theme={theme} onTheme={onTheme} />}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -194,13 +162,26 @@ export function Header({
               <Popover width={230}>
                 <div style={{ padding: '9px 10px 11px', borderBottom: '1px solid var(--line)', marginBottom: 6 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{user.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--dim)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--dim)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
                     {user.email}
                   </div>
                 </div>
                 <button type="button" className="ws-menu-item" onClick={() => { onOpenAccount(); closeAll.current(); }}>
                   <i className="ph ph-user-circle" style={{ fontSize: 16, color: 'var(--dim)' }} /> Your account
                 </button>
+                {isPhone && (
+                  <button type="button" className="ws-menu-item" onClick={() => { onOpenCustom(); closeAll.current(); }}>
+                    <i className="ph ph-plus-circle" style={{ fontSize: 16, color: 'var(--dim)' }} /> Custom match
+                  </button>
+                )}
                 <button type="button" className="ws-menu-item" onClick={() => { onOpenExport(); closeAll.current(); }}>
                   <i className="ph ph-download-simple" style={{ fontSize: 16, color: 'var(--dim)' }} /> Export history
                 </button>
@@ -212,6 +193,11 @@ export function Header({
                   >
                     <i className="ph ph-sliders-horizontal" style={{ fontSize: 16, color: 'var(--dim)' }} /> Admin
                   </button>
+                )}
+                {isPhone && (
+                  <div style={{ padding: '8px 10px 4px', borderTop: '1px solid var(--line)', marginTop: 6 }}>
+                    <ThemePicker theme={theme} onTheme={onTheme} full />
+                  </div>
                 )}
                 <button
                   type="button"
@@ -227,6 +213,7 @@ export function Header({
         </div>
       </div>
 
+      {!isPhone && (
       <div
         style={{
           maxWidth: 1120,
@@ -282,6 +269,36 @@ export function Header({
           <i className="ph-bold ph-plus" style={{ fontSize: 14 }} /> Custom match
         </button>
       </div>
+      )}
+    </div>
+  );
+}
+
+/** The three-way theme switch: a segmented control on a desk, a full-width row in the menu. */
+function ThemePicker({ theme, onTheme, full = false }) {
+  return (
+    <div
+      className="ws-theme"
+      style={full ? { display: 'flex', gap: 4 } : undefined}
+    >
+      {THEMES.map(([id, icon, title]) => (
+        <button
+          key={id}
+          type="button"
+          title={title}
+          aria-label={title}
+          aria-pressed={theme === id}
+          onClick={() => onTheme(id)}
+          className="ws-theme-btn"
+          style={{
+            ...(full ? { flex: 1 } : null),
+            background: theme === id ? 'var(--card2)' : 'transparent',
+            color: theme === id ? 'var(--accent-txt)' : 'var(--dim2)',
+          }}
+        >
+          <i className={icon} />
+        </button>
+      ))}
     </div>
   );
 }
@@ -296,6 +313,7 @@ function Popover({ children, width = 200 }) {
         right: 0,
         top: 'calc(100% + 6px)',
         minWidth: width,
+        maxWidth: 'calc(100vw - 32px)',
         background: 'var(--card)',
         border: '1px solid var(--line2)',
         borderRadius: 13,

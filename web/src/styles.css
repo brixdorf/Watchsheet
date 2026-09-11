@@ -437,6 +437,87 @@ textarea::placeholder {
   display: none;
 }
 
+/* The page column. Same 1120 and 16px gutter the header uses, so the two line up. */
+.ws-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 20px 16px 80px;
+}
+
+/* Brand block. The 62px logo alone drove about a third of the header's height on a phone. */
+.ws-brand-logo {
+  width: 62px;
+  height: 62px;
+}
+.ws-brand-name {
+  font-size: 29px;
+}
+
+/* The theme switch: a segmented control in the bar, a full-width row in the account menu. */
+.ws-theme {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.ws-theme-btn {
+  width: 31px;
+  height: 27px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+/**
+ * The phone navigation.
+ *
+ * Rendered only below the breakpoint, so there is no second copy of the tabs sitting in the
+ * accessibility tree at desktop width. zIndex sits under the modal's 80 and the header
+ * scrim's 44, so an open sheet covers it.
+ */
+.ws-bottomnav {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 43;
+  background: var(--bg2);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.ws-bottomnav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 56px;
+  padding: 7px 2px;
+  border: none;
+  background: transparent;
+  color: var(--dim2);
+  font-family: Barlow, system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.ws-bottomnav-tab i {
+  font-size: 21px;
+}
+.ws-bottomnav-tab[data-active] {
+  color: var(--accent-txt);
+}
+
 /* Horizontal filter strips: scrollable but without a visible scrollbar. */
 .ws-strip {
   display: flex;
@@ -504,6 +585,38 @@ textarea::placeholder {
     border-radius: 2px;
     background: var(--line2);
     margin: 0 auto 10px;
+  }
+
+  /* Room for the bottom bar. The 80px here was already reserved for a bar that did not
+     exist; on a phone it finally has something to clear. */
+  .ws-main {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .ws-brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+  .ws-brand-name {
+    font-size: 20px;
+  }
+  /* Nowrap with nothing to contain it, and the first thing to bleed past the right edge. */
+  .ws-brand-tag {
+    display: none;
+  }
+
+  /* In the account menu it is a row of three, so they can be thumb-sized. */
+  .ws-theme {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .ws-theme-btn {
+    width: auto;
+    height: 44px;
+    border: 1px solid var(--line);
+    font-size: 17px;
   }
   /* The padded sheets already have 20px above the title; the handle sits inside that. */
   .ws-sheet--padded .ws-sheet-handle {

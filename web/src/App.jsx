@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './lib/api.js';
 import { animateScreen, installVisibilityGuard } from './lib/anim.js';
 import { useTheme } from './lib/useTheme.js';
+import { useIsPhone } from './lib/useMedia.js';
 import { seasonIdFor } from './lib/format.js';
 
 import { FollowPicker } from './components/FollowPicker.jsx';
 import { CustomMatch } from './components/CustomMatch.jsx';
 import { AccountModal } from './components/AccountModal.jsx';
+import { BottomNav } from './components/BottomNav.jsx';
 import { ExportModal } from './components/ExportModal.jsx';
 import { Following } from './components/Following.jsx';
 import { Header } from './components/Header.jsx';
@@ -37,6 +39,7 @@ export default function App() {
   const [needsPicker, setNeedsPicker] = useState(false);
 
   const [tab, setTab] = useState('home');
+  const isPhone = useIsPhone();
   const [season, setSeason] = useState(seasonIdFor(new Date()));
   const [seasons, setSeasons] = useState([]);
 
@@ -379,7 +382,7 @@ export default function App() {
         onLogout={logout}
       />
 
-      <div ref={mainRef} style={{ maxWidth: 1120, margin: '0 auto', padding: '20px 16px 80px' }}>
+      <div ref={mainRef} className="ws-main">
         {tab === 'admin' && <AdminScreen onClose={() => setTab('home')} onFlash={flash} />}
 
         {!ready && tab !== 'admin' && <Spinner label="Loading your season" />}
@@ -470,6 +473,8 @@ export default function App() {
           onClose={() => setModal(null)}
         />
       )}
+
+      {isPhone && <BottomNav tab={tab} onTab={setTab} />}
 
       <Toast message={toast?.message} tone={toast?.tone} />
     </div>
