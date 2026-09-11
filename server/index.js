@@ -18,6 +18,9 @@ migrate();
 
 const app = express();
 app.disable('x-powered-by');
+// Without this req.ip is the proxy, not the caller. See lib/clientIp.js for why the
+// Cloudflare header is preferred over the value this produces.
+app.set('trust proxy', config.trustProxyHops);
 app.use(express.json({ limit: '256kb' }));
 app.use(cookieParser(config.sessionSecret));
 app.use(attachUser);

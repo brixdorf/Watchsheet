@@ -364,7 +364,7 @@ export function Onboarding({ onSignedIn }) {
                 }}
               >
                 <i className="ph ph-arrow-clockwise" style={{ fontSize: 14 }} />
-                {resend > 0 ? `Resend in ${resend}s` : 'Resend code'}
+                {resend > 0 ? `Resend in ${waitLabel(resend)}` : 'Resend code'}
               </button>
             </div>
           </div>
@@ -389,6 +389,16 @@ function Slot({ char, isActive, hasFakeCaret, invalid }) {
       {hasFakeCaret && <span className="ws-otp-caret" />}
     </div>
   );
+}
+
+/**
+ * The resend cooldown is half a minute, but the per-connection limit can hand back the best
+ * part of an hour, and "3540s" is not a length of time anyone reads.
+ */
+function waitLabel(seconds) {
+  if (seconds < 90) return `${seconds}s`;
+  const mins = Math.ceil(seconds / 60);
+  return mins < 60 ? `${mins} min` : `${Math.ceil(mins / 60)}h`;
 }
 
 function ErrorLine({ children }) {

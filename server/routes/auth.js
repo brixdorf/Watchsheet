@@ -1,6 +1,7 @@
 import express from 'express';
 import { config } from '../config.js';
 import { isAdmin } from '../lib/admin.js';
+import { clientIp } from '../lib/clientIp.js';
 import { get, run, tx } from '../db/index.js';
 import { isLocalDelivery, mailProvider } from '../lib/email/index.js';
 import {
@@ -70,7 +71,7 @@ authRouter.post('/request-code', async (req, res) => {
 
   let issued;
   try {
-    issued = issueCode(email, name || existing?.name);
+    issued = issueCode(email, name || existing?.name, clientIp(req));
   } catch (err) {
     if (err instanceof CooldownError) {
       return res

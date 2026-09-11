@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { config } from '../config.js';
 import { get, run } from '../db/index.js';
 
 /**
@@ -12,17 +13,44 @@ import { get, run } from '../db/index.js';
 export const CODE_TTL_MS = 10 * 60 * 1000;
 export const RESEND_COOLDOWN_MS = 30 * 1000;
 export const MAX_ATTEMPTS = 5;
+export const IP_WINDOW_MS = 60 * 60 * 1000;
 
 /**
  * The message carries no number. `retryAfterMs` does, and the screen counts it down live,
  * so there is nothing on screen that can freeze at the moment the error was raised.
  */
 export class CooldownError extends Error {
-  constructor(retryAfterMs) {
-    super('Hold on. You can ask for another code in a moment.');
+  constructor(retryAfterMs, message = 'Hold on. You can ask for another code in a moment.') {
+    super(message);
     this.name = 'CooldownError';
     this.retryAfterMs = retryAfterMs;
   }
+}
+
+/**
+ * The per-address cooldown stops one inbox being spammed. This stops one caller working
+ * through a list of them, which is the case that costs real sends and real reputation.
+ *
+ * The window slides: the wait reported back is until the oldest request in it ages out, so
+ * the countdown on screen is the true one rather than a flat hour. A caller we cannot
+ * identify is not limited, because the alternative is putting every unidentifiable request
+ * into one bucket and locking them all out together.
+ */
+function enforceIpQuota(ip, now) {
+  if (!ip || config.otp.ipPerHour < 1) return;
+
+  const since = now - IP_WINDOW_MS;
+  const row = get(
+    'SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM otp_codes WHERE ip = ? AND created_at > ?',
+    ip,
+    since,
+  );
+  if (!row || row.n < config.otp.ipPerHour) return;
+
+  throw new CooldownError(
+    Math.max(1000, row.oldest + IP_WINDOW_MS - now),
+    'Too many codes requested from this connection. Try again a little later.',
+  );
 }
 
 export const normalizeEmail = (email) => String(email ?? '').trim().toLowerCase();
@@ -77,7 +105,7 @@ const hashCode = (email, code) =>
   crypto.createHash('sha256').update(`${normalizeEmail(email)}:${code}`).digest('hex');
 
 /** Issues a code, honouring the cooldown. Returns the plain code for the mail provider. */
-export function issueCode(email, name) {
+export function issueCode(email, name, ip = '') {
   const addr = normalizeEmail(email);
   const now = Date.now();
 
@@ -89,18 +117,23 @@ export function issueCode(email, name) {
     throw new CooldownError(RESEND_COOLDOWN_MS - (now - last.created_at));
   }
 
+  // After the per-address cooldown, so a genuine resend still gets the message about its
+  // own address rather than one about the connection.
+  enforceIpQuota(ip, now);
+
   // Only the newest code is ever valid; retire the rest so an old one cannot be replayed.
   run('UPDATE otp_codes SET consumed_at = ? WHERE email = ? AND consumed_at IS NULL', now, addr);
 
   const code = generateCode();
   const inserted = run(
-    `INSERT INTO otp_codes (email, name, code_hash, expires_at, attempts, created_at)
-     VALUES (?, ?, ?, ?, 0, ?)`,
+    `INSERT INTO otp_codes (email, name, code_hash, expires_at, attempts, created_at, ip)
+     VALUES (?, ?, ?, ?, 0, ?, ?)`,
     addr,
     name ? String(name).trim() : null,
     hashCode(addr, code),
     now + CODE_TTL_MS,
     now,
+    ip || null,
   );
 
   return { code, codeId: Number(inserted.lastInsertRowid), expiresAt: now + CODE_TTL_MS };

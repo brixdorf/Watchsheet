@@ -159,12 +159,15 @@ function mergeSplitTeams() {
 
 export function migrate() {
   db.exec(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
+  ensureColumn('otp_codes', 'ip', 'TEXT');
   ensureColumn('teams', 'popularity', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('competitions', 'popularity', 'INTEGER NOT NULL DEFAULT 0');
   // Indexed here rather than in schema.sql, which cannot add an index to a column it did
   // not create on this install.
   db.exec('CREATE INDEX IF NOT EXISTS idx_team_popularity ON teams(popularity DESC)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_comp_popularity ON competitions(popularity DESC)');
+  // The rate-limit count is a lookup by caller over a one hour window.
+  db.exec('CREATE INDEX IF NOT EXISTS idx_otp_ip ON otp_codes(ip, created_at DESC)');
 
   const gaps = unranked();
   if (gaps.teams.length || gaps.competitions.length) {

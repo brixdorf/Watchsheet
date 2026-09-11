@@ -18,6 +18,12 @@ export const config = {
   sessionSecret: process.env.SESSION_SECRET || 'watchsheet-dev-secret',
   databasePath: path.resolve(rootDir, process.env.DATABASE_PATH || './data/watchsheet.db'),
 
+  // How many proxies sit in front. Cloudflare and Traefik is two; get it wrong and req.ip
+  // is a proxy's address rather than the caller's, which would put every visitor into the
+  // same rate-limit bucket. Cloudflare's own header is preferred over this anyway, so it
+  // only matters where that header is absent.
+  trustProxyHops: num(process.env.TRUST_PROXY_HOPS, 2),
+
   // Who may open the admin screen. Kept in the environment rather than on the user row,
   // so access is a config change and a copied database grants nothing.
   adminEmails: (process.env.ADMIN_EMAILS || 'admin@example.com')
@@ -42,5 +48,11 @@ export const config = {
     replyTo: process.env.MAIL_REPLY_TO || '',
     resendApiKey: process.env.RESEND_API_KEY || '',
     devEcho: bool(process.env.OTP_DEV_ECHO, process.env.NODE_ENV !== 'production'),
+  },
+
+  otp: {
+    // Codes an address can be sent from one caller per hour. The per-address cooldown stops
+    // someone spamming one inbox; this stops them working through a list of inboxes.
+    ipPerHour: num(process.env.OTP_IP_PER_HOUR, 10),
   },
 };
