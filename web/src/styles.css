@@ -467,6 +467,11 @@ textarea::placeholder {
   font-size: 29px;
 }
 
+/* The picker's headline, which is its own text at its own size, not the wordmark. */
+.ws-picker-title {
+  font-size: 28px;
+}
+
 /* The theme switch: a segmented control in the bar, a full-width row in the account menu. */
 .ws-theme {
   display: flex;
@@ -619,6 +624,9 @@ textarea::placeholder {
   }
   .ws-brand-name {
     font-size: 20px;
+  }
+  .ws-picker-title {
+    font-size: 22px;
   }
   /* Nowrap with nothing to contain it, and the first thing to bleed past the right edge. */
   .ws-brand-tag {

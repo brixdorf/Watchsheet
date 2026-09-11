@@ -71,7 +71,7 @@ export function FollowPicker({ name, onDone }) {
       style={{
         minHeight: '100dvh',
         background: 'radial-gradient(120% 90% at 50% -10%, var(--accent-soft), transparent 60%)',
-        paddingBottom: 96,
+        paddingBottom: 'calc(128px + env(safe-area-inset-bottom))',
       }}
     >
       <div ref={rootRef} style={{ maxWidth: 880, margin: '0 auto', padding: '28px 20px 0' }}>
@@ -79,11 +79,12 @@ export function FollowPicker({ name, onDone }) {
           <img
             src="/logo.svg"
             alt=""
-            style={{ width: 62, height: 62, flex: 'none', borderRadius: 18, boxShadow: '0 10px 26px rgba(11,42,168,.4)' }}
+            className="ws-brand-logo"
+            style={{ flex: 'none', borderRadius: 18, boxShadow: '0 10px 26px rgba(11,42,168,.4)' }}
           />
           <div style={{ minWidth: 0 }}>
             <Eyebrow style={{ marginBottom: 2 }}>Last step{name ? `, ${name}` : ''}</Eyebrow>
-            <div style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-.03em', lineHeight: 1.05 }}>
+            <div className="ws-picker-title" style={{ fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05 }}>
               Who are you following?
             </div>
           </div>
