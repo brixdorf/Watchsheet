@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { OTPInput, REGEXP_ONLY_DIGITS } from 'input-otp';
 import { api, ApiError } from '../lib/api.js';
 import { animateScreen } from '../lib/anim.js';
 
@@ -8,6 +9,10 @@ import { animateScreen } from '../lib/anim.js';
  * The code is real (hashed server-side, rate limited, five attempts). Only delivery is
  * local until a mail provider is configured. When it is local the server hands the code
  * back and it is shown here, which is what makes the whole flow usable today.
+ *
+ * The code row is one input, not six. input-otp lays a single invisible field across all six
+ * boxes and hands back the per-slot state to paint, so the boxes themselves are plain divs.
+ * Six real inputs meant six competing autofill targets and focus walking written by hand.
  */
 
 const FEATURES = [
@@ -37,14 +42,14 @@ export function Onboarding({ onSignedIn }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [resend, setResend] = useState(0);
   const [devCode, setDevCode] = useState(null);
 
   const rootRef = useRef(null);
-  const cellsRef = useRef([]);
+  const inputRef = useRef(null);
   const timerRef = useRef(null);
 
   useEffect(() => animateScreen(rootRef.current), [step]);
@@ -80,11 +85,11 @@ export function Onboarding({ onSignedIn }) {
     try {
       const res = await api.requestCode(email.trim(), name.trim());
       setDevCode(res.devCode ?? null);
-      setCode(['', '', '', '', '', '']);
+      setCode('');
       const cooldown = res.resendInMs != null ? res.resendInMs / 1000 : undefined;
       setStep(2);
       startCooldown(cooldown);
-      setTimeout(() => cellsRef.current[0]?.focus(), 120);
+      setTimeout(() => inputRef.current?.focus(), 120);
     } catch (err) {
       if (err instanceof ApiError && err.payload?.retryAfterMs != null) {
         setStep(2);
@@ -103,10 +108,10 @@ export function Onboarding({ onSignedIn }) {
     try {
       const res = await api.requestCode(email.trim(), name.trim());
       setDevCode(res.devCode ?? null);
-      setCode(['', '', '', '', '', '']);
+      setCode('');
       const cooldown = res.resendInMs != null ? res.resendInMs / 1000 : undefined;
       startCooldown(cooldown);
-      setTimeout(() => cellsRef.current[0]?.focus(), 80);
+      setTimeout(() => inputRef.current?.focus(), 80);
     } catch (err) {
       // A 429 means the server is still counting; take its number rather than showing a
       // second, stale one beside the live button.
@@ -119,7 +124,7 @@ export function Onboarding({ onSignedIn }) {
     }
   };
 
-  const verify = async (value = code.join('')) => {
+  const verify = async (value = code) => {
     if (value.length < 6) return setError('All six digits, please.');
     setBusy(true);
     setError('');
@@ -129,34 +134,10 @@ export function Onboarding({ onSignedIn }) {
       onSignedIn(res.user, res.followCount ?? 0);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'That code is not right.');
-      setCode(['', '', '', '', '', '']);
-      cellsRef.current[0]?.focus();
+      setCode('');
+      inputRef.current?.focus();
     } finally {
       setBusy(false);
-    }
-  };
-
-  const onCell = (index, raw) => {
-    const digits = String(raw).replace(/\D/g, '');
-    setError('');
-
-    // A pasted code fills the row from wherever the cursor is.
-    if (digits.length > 1) {
-      const next = [...code];
-      for (let i = 0; i < digits.length && index + i < 6; i++) next[index + i] = digits[i];
-      setCode(next);
-      const filled = next.join('');
-      cellsRef.current[Math.min(5, index + digits.length)]?.focus();
-      if (filled.length === 6) verify(filled);
-      return;
-    }
-
-    const next = [...code];
-    next[index] = digits.slice(-1);
-    setCode(next);
-    if (next[index]) {
-      if (index < 5) cellsRef.current[index + 1]?.focus();
-      else if (next.join('').length === 6) verify(next.join(''));
     }
   };
 
@@ -296,26 +277,27 @@ export function Onboarding({ onSignedIn }) {
               Six digit code sent to <span style={{ color: 'var(--fg)' }}>{email.trim()}</span>.
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0,1fr))', gap: 8, marginBottom: 14 }}>
-              {code.map((value, i) => (
-                <input
-                  key={i}
-                  ref={(el) => { cellsRef.current[i] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                  maxLength={6}
-                  aria-label={`Digit ${i + 1}`}
-                  value={value}
-                  onChange={(e) => onCell(i, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Backspace' && !code[i] && i > 0) cellsRef.current[i - 1]?.focus();
-                    if (e.key === 'Enter') verify();
-                  }}
-                  className="ws-field"
-                  style={{ padding: '13px 0', textAlign: 'center', fontSize: 21, fontWeight: 700 }}
-                />
-              ))}
+            <div style={{ marginBottom: 14 }}>
+              <OTPInput
+                ref={inputRef}
+                value={code}
+                onChange={(next) => { setCode(next); setError(''); }}
+                onComplete={() => verify()}
+                onKeyDown={(e) => e.key === 'Enter' && verify()}
+                maxLength={6}
+                pattern={REGEXP_ONLY_DIGITS}
+                // The old handler stripped non-digits before storing them, so a code pasted
+                // out of an email as "418 302" still landed. The pattern on its own would
+                // refuse that paste whole rather than clean it.
+                pasteTransformer={(pasted) => pasted.replace(/\D/g, '')}
+                // The library's own no-JS fallback hardcodes black on white. Nothing here
+                // renders without JS anyway, so it has no job to do.
+                noScriptCSSFallback={null}
+                autoComplete="one-time-code"
+                aria-label="Six digit sign-in code"
+                containerClassName="ws-otp"
+                render={({ slots }) => slots.map((slot, i) => <Slot key={i} {...slot} />)}
+              />
             </div>
 
             {devCode && (
@@ -357,7 +339,7 @@ export function Onboarding({ onSignedIn }) {
               <button
                 type="button"
                 className="ws-quiet"
-                onClick={() => { setStep(1); setError(''); setCode(['', '', '', '', '', '']); }}
+                onClick={() => { setStep(1); setError(''); setCode(''); }}
                 style={{ fontSize: 13, padding: '4px 0' }}
               >
                 Wrong email?
@@ -389,6 +371,16 @@ export function Onboarding({ onSignedIn }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** One box. The caret is painted, because the input lying across the row is invisible. */
+function Slot({ char, isActive, hasFakeCaret }) {
+  return (
+    <div className="ws-otp-slot" data-active={isActive || undefined}>
+      {char}
+      {hasFakeCaret && <span className="ws-otp-caret" />}
     </div>
   );
 }

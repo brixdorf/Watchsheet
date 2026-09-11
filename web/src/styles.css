@@ -128,6 +128,18 @@ textarea::placeholder {
   }
 }
 
+/* steps(1), because a text caret snaps on and off rather than fading. */
+@keyframes ws-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
 /**
  * The nine odd stats.
  *
@@ -175,6 +187,49 @@ textarea::placeholder {
 
 .ws-field--card {
   background: var(--card);
+}
+
+/**
+ * The six-digit code row.
+ *
+ * input-otp draws one real input, absolutely positioned across the whole row and invisible,
+ * so these boxes are plain divs wearing .ws-field's clothes: same fill, border, radius and
+ * 0.15s border transition, with the accent moved from :focus to the active slot.
+ *
+ * The input is out of flow, so it never claims a grid track of its own.
+ */
+.ws-otp {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ws-otp-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* The old cells were inputs and took their height from the body's 1.45 line-height through
+     `font: inherit`, plus 13px of padding and a 1px border. A div has no text in it until a
+     digit arrives, so the same sum has to be stated rather than inherited. */
+  height: calc(1.45em + 28px);
+  border-radius: 11px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  font-size: 21px;
+  font-weight: 700;
+  transition: border-color 0.15s ease;
+}
+.ws-otp-slot[data-active] {
+  border-color: var(--accent);
+}
+
+.ws-otp-caret {
+  position: absolute;
+  width: 2px;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--accent);
+  animation: ws-caret 1.1s steps(1) infinite;
 }
 
 /* The platform's own cancel button is drawn by the browser and ignores every colour token
@@ -307,5 +362,8 @@ textarea::placeholder {
   .ws-primary,
   .ws-chip {
     transition: none;
+  }
+  .ws-otp-caret {
+    animation: none;
   }
 }
