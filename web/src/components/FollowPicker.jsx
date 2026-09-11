@@ -134,6 +134,7 @@ export function FollowPicker({ name, onDone }) {
             zIndex: 30,
             background: 'var(--bg2)',
             borderTop: '1px solid var(--line)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
           <div
@@ -198,7 +199,7 @@ function Group({ title, sub, items, selected, onToggle }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))',
           gridAutoRows: '1fr',
           gap: 10,
         }}

@@ -70,6 +70,7 @@ export function AccountModal({ user, onSaved, onClose }) {
             border: '1px solid var(--line)',
             fontSize: 14,
             color: 'var(--dim)',
+            whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             marginBottom: 20,

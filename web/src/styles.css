@@ -518,6 +518,11 @@ textarea::placeholder {
   color: var(--accent-txt);
 }
 
+/* Above the bottom bar on a phone, where it always sat on a desk. */
+.ws-toast {
+  bottom: 24px;
+}
+
 /* Horizontal filter strips: scrollable but without a visible scrollbar. */
 .ws-strip {
   display: flex;
@@ -604,6 +609,22 @@ textarea::placeholder {
   /* Nowrap with nothing to contain it, and the first thing to bleed past the right edge. */
   .ws-brand-tag {
     display: none;
+  }
+
+  .ws-toast {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  /* Twelve three-letter labels want 23px each in a 20px column. Every other one is hidden
+     from sight and left in the DOM, so the bars all stay and a reader still gets the month. */
+  .ws-months-label[data-minor] {
+    visibility: hidden;
+  }
+
+  /* Four caps plus Run sync came to 319px of a 328px row: it fit, by nine pixels. */
+  .ws-run-sync {
+    width: 100%;
+    margin-top: 4px;
   }
 
   /* In the account menu it is a row of three, so they can be thumb-sized. */

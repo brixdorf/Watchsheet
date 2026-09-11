@@ -40,7 +40,12 @@ export function Following({ teams, competitions, onToggleFollow }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+      {/*
+        The pills scroll in a strip, the way Search and History already do. They used to wrap
+        instead, forced by a 180px floor on the search field sharing their row; the field now
+        has a row of its own, which is also what lets it be full width to type into.
+      */}
+      <div className="ws-strip" style={{ gap: 8, marginBottom: 10 }}>
         <FilterPill active={kind === 'teams'} onClick={() => setKind('teams')}>
           Teams
         </FilterPill>
@@ -50,15 +55,15 @@ export function Following({ teams, competitions, onToggleFollow }) {
         <FilterPill active={onlyFollowed} onClick={() => setOnlyFollowed((v) => !v)}>
           Followed
         </FilterPill>
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <SearchField
-            size="sm"
-            value={query}
-            onChange={setQuery}
-            placeholder="Search every team and competition…"
-            label="Search the catalog"
-          />
-        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <SearchField
+          size="sm"
+          value={query}
+          onChange={setQuery}
+          placeholder="Search every team and competition…"
+          label="Search the catalog"
+        />
       </div>
 
       <div style={{ fontSize: 11, color: 'var(--dim2)', marginBottom: 14 }}>

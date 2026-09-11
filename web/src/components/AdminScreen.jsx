@@ -271,10 +271,10 @@ export function AdminScreen({ onClose, onFlash }) {
               ))}
               <button
                 type="button"
-                className="ws-primary"
                 onClick={runNow}
                 disabled={running || status.budget.remaining < 1}
-                style={{ marginLeft: 'auto', padding: '10px 16px', fontSize: 14 }}
+                className="ws-primary ws-run-sync"
+                style={{ padding: '10px 16px', fontSize: 14 }}
               >
                 <i className={running ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-play'} />
                 {running ? 'Running…' : 'Run sync'}

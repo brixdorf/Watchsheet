@@ -103,6 +103,9 @@ export function MatchRow({ match, onOpen, onToggle }) {
             letterSpacing: '.07em',
             textTransform: 'uppercase',
             whiteSpace: 'nowrap',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
             color: tagColor,
           }}
         >

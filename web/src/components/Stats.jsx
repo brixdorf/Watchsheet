@@ -126,12 +126,26 @@ export function Stats({ stats, seasonLabel }) {
       </div>
 
       <div className="ws-card" style={{ padding: '16px 16px 12px', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginBottom: 14,
+          }}
+        >
           <div style={{ fontSize: 15, fontWeight: 700 }}>Matches watched per month</div>
           <div style={{ fontSize: 11, color: 'var(--dim2)' }}>peak {peak} in a month</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 120 }}>
-          {stats.monthly.map((b) => (
+        {/*
+          Twelve bars in a phone-width card leaves about 20px each, and a three letter month
+          at 9.5px wants 23. Every label is still in the DOM for a screen reader; the axis
+          just prints every other one, which is enough to read the shape by.
+        */}
+        <div className="ws-months" style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 120 }}>
+          {stats.monthly.map((b, i) => (
             <div key={b.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <div style={{ fontSize: 10, color: 'var(--dim2)' }}>{b.n || ''}</div>
               <div
@@ -143,7 +157,13 @@ export function Stats({ stats, seasonLabel }) {
                   height: Math.max(3, Math.round((b.n / peak) * 88)),
                 }}
               />
-              <div style={{ fontSize: 9.5, color: 'var(--dim2)', textTransform: 'uppercase' }}>{b.label}</div>
+              <div
+                className="ws-months-label"
+                data-minor={i % 2 ? '' : undefined}
+                style={{ fontSize: 9.5, color: 'var(--dim2)', textTransform: 'uppercase' }}
+              >
+                {b.label}
+              </div>
             </div>
           ))}
         </div>

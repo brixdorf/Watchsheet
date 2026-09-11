@@ -5,10 +5,10 @@ export function Toast({ message, tone = 'accent' }) {
   return (
     <div
       role="status"
+      className="ws-toast"
       style={{
         position: 'fixed',
         left: '50%',
-        bottom: 24,
         transform: 'translateX(-50%)',
         zIndex: 90,
         display: 'flex',

@@ -38,7 +38,7 @@ export function HomeFeed({ feed, stats, seasonLabel, onOpen, onToggle }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(168px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))',
           gap: 10,
           marginBottom: 26,
         }}
