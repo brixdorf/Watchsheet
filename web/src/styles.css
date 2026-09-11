@@ -399,6 +399,44 @@ textarea::placeholder {
   color: var(--accent-txt);
 }
 
+/**
+ * The modal overlay and its sheet.
+ *
+ * This lives here rather than inline in Modal.jsx for one reason: a media query cannot
+ * reach an inline style, and on a phone the whole thing becomes a bottom sheet. maxWidth
+ * arrives as the --sheet-max custom property so the phone rule can drop it without having
+ * to out-specify an inline value.
+ */
+.ws-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.ws-sheet {
+  width: 100%;
+  max-width: var(--sheet-max, 540px);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.ws-sheet--padded {
+  padding: 20px;
+}
+
+/* Only a bottom sheet gets a handle, so it is drawn only at that width. */
+.ws-sheet-handle {
+  display: none;
+}
+
 /* Horizontal filter strips: scrollable but without a visible scrollbar. */
 .ws-strip {
   display: flex;
@@ -434,6 +472,45 @@ textarea::placeholder {
   .ws-search--sm,
   .ws-field--note {
     font-size: 16px;
+  }
+
+  /* A dialog becomes a bottom sheet: reachable one handed, and it stays put when the
+     keyboard takes the bottom half of the screen. */
+  .ws-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .ws-sheet {
+    max-width: none;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    /* dvh, so the cap follows the visible area rather than the toolbar-inclusive one.
+       Scrolling moves to the sheet itself: the backdrop scrolling a sheet taller than the
+       screen leaves the handle and the title somewhere above the top edge. */
+    max-height: 92dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .ws-sheet--padded {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .ws-sheet-handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line2);
+    margin: 0 auto 10px;
+  }
+  /* The padded sheets already have 20px above the title; the handle sits inside that. */
+  .ws-sheet--padded .ws-sheet-handle {
+    margin-top: -6px;
+  }
+  .ws-sheet:not(.ws-sheet--padded) .ws-sheet-handle {
+    margin-top: 10px;
   }
 }
 
