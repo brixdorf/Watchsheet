@@ -296,7 +296,7 @@ export function Onboarding({ onSignedIn }) {
                 autoComplete="one-time-code"
                 aria-label="Six digit sign-in code"
                 containerClassName="ws-otp"
-                render={({ slots }) => slots.map((slot, i) => <Slot key={i} {...slot} />)}
+                render={({ slots }) => slots.map((slot, i) => <Slot key={i} {...slot} invalid={!!error} />)}
               />
             </div>
 
@@ -375,10 +375,17 @@ export function Onboarding({ onSignedIn }) {
   );
 }
 
-/** One box. The caret is painted, because the input lying across the row is invisible. */
-function Slot({ char, isActive, hasFakeCaret }) {
+/**
+ * One box. The caret is painted, because the input lying across the row is invisible.
+ *
+ * The tint tracks the error line rather than the refusal specifically, which is the same
+ * rule the error line itself follows: both colours say this row is the problem. It matters
+ * most on a refused code, where the row is emptied and would otherwise look like it simply
+ * cleared itself. No state of its own, since the next keystroke clears the error anyway.
+ */
+function Slot({ char, isActive, hasFakeCaret, invalid }) {
   return (
-    <div className="ws-otp-slot" data-active={isActive || undefined}>
+    <div className="ws-otp-slot" data-active={isActive || undefined} data-invalid={invalid || undefined}>
       {char}
       {hasFakeCaret && <span className="ws-otp-caret" />}
     </div>

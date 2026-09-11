@@ -222,6 +222,9 @@ textarea::placeholder {
 .ws-otp-slot[data-active] {
   border-color: var(--accent);
 }
+.ws-otp-slot[data-invalid] {
+  border-color: var(--neg);
+}
 
 .ws-otp-caret {
   position: absolute;
