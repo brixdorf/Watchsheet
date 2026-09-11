@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { OTPInput, REGEXP_ONLY_DIGITS } from 'input-otp';
 import { api, ApiError } from '../lib/api.js';
+import { isValidEmail } from '../lib/email.js';
 import { animateScreen } from '../lib/anim.js';
 
 /**
@@ -78,9 +79,7 @@ export function Onboarding({ onSignedIn }) {
   const sendCode = async () => {
     setError('');
     if (name.trim().length < 2) return setError('Pop your name in first.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
-      return setError('That email does not look right.');
-    }
+    if (!isValidEmail(email)) return setError('That email does not look right.');
     setBusy(true);
     try {
       const res = await api.requestCode(email.trim(), name.trim());

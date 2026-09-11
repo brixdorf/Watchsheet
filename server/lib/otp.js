@@ -27,8 +27,48 @@ export class CooldownError extends Error {
 
 export const normalizeEmail = (email) => String(email ?? '').trim().toLowerCase();
 
-// Deliberately permissive: the code round-trip is the real proof the address works.
-export const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizeEmail(email));
+/** RFC 5321 ceilings. Anything past them is rejected by a receiving server anyway. */
+const EMAIL_MAX = 254;
+const LOCAL_MAX = 64;
+const LABEL_MAX = 63;
+
+/**
+ * Structural, not exhaustive.
+ *
+ * The old rule was one permissive regex on the reasoning that the code round-trip is the
+ * real proof an address works. That holds for anything deliverable, but it let through
+ * shapes no mail server will ever accept: 300 character addresses, `a@b..com`,
+ * `a@-host.com`, `a@b.com.`, a local part starting or ending on a dot. Each of those costs
+ * a provider request and comes back a bounce, which is worse than a refusal here.
+ *
+ * So this checks the shape and leaves the character set alone wherever it can, since a
+ * local part may legitimately hold unicode and a domain may be punycode. Only the TLD is
+ * pinned to ASCII, because that is the one label whose alphabet is actually fixed.
+ */
+export function isValidEmail(input) {
+  const email = normalizeEmail(input);
+  if (email.length < 3 || email.length > EMAIL_MAX) return false;
+
+  // Split on the last @ so the domain is never ambiguous; a stray one left behind in the
+  // local part is then refused outright below.
+  const at = email.lastIndexOf('@');
+  if (at < 1 || at === email.length - 1) return false;
+
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+
+  if (local.length > LOCAL_MAX || /[\s@]/.test(local)) return false;
+  if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
+
+  const labels = domain.split('.');
+  if (labels.length < 2) return false;
+  if (labels.some((l) => !l || l.length > LABEL_MAX || /[\s@.]/.test(l))) return false;
+  if (labels.some((l) => l.startsWith('-') || l.endsWith('-'))) return false;
+
+  // com, uk, and xn--p1ai all pass; c_d, 1, and com- do not.
+  const tld = labels[labels.length - 1];
+  return tld.length >= 2 && /^[a-z][a-z0-9-]*$/.test(tld);
+}
 
 const generateCode = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
 
