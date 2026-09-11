@@ -115,7 +115,7 @@ export function Following({ teams, competitions, onToggleFollow }) {
             </div>
             <button
               type="button"
-              className="ws-pop"
+              className="ws-pop ws-tap"
               aria-label={item.following ? `Unfollow ${item.name}` : `Follow ${item.name}`}
               aria-pressed={item.following}
               onClick={() => onToggleFollow(kind === 'teams' ? 'team' : 'competition', item.id, !item.following)}

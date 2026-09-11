@@ -68,7 +68,7 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
           </div>
           <button
             type="button"
-            className="ws-chip"
+            className="ws-chip ws-tap"
             aria-label="Close"
             onClick={onClose}
             style={{ width: 32, height: 32, flex: 'none', borderRadius: 9, display: 'grid', placeItems: 'center', fontSize: 15 }}

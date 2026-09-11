@@ -66,7 +66,7 @@ export function SearchField({ value, onChange, placeholder, label, size = 'md' }
             color: 'var(--dim)',
             fontSize: big ? 14 : 12,
           }}
-          className="ws-pop"
+          className="ws-pop ws-tap"
         >
           <i className="ph-bold ph-x" />
         </button>
@@ -149,7 +149,11 @@ export function FilterPill({ active, children, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      className="ws-tap"
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: '7px 12px',
         borderRadius: 9,
         cursor: 'pointer',

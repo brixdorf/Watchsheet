@@ -106,7 +106,7 @@ export function Header({
         <div style={{ position: 'relative' }}>
           <button
             type="button"
-            className="ws-chip"
+            className="ws-chip ws-tap"
             onClick={() => { setSeasonOpen((v) => !v); setMenuOpen(false); }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px' }}
           >
@@ -149,7 +149,7 @@ export function Header({
         <div style={{ position: 'relative' }}>
           <button
             type="button"
-            className="ws-chip"
+            className="ws-chip ws-tap"
             aria-label="Account menu"
             onClick={() => { setMenuOpen((v) => !v); setSeasonOpen(false); }}
             style={{ width: 36, height: 36, fontWeight: 700, fontSize: 13, color: 'var(--accent-txt)' }}

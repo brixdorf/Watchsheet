@@ -1,3 +1,17 @@
+/**
+ * A control that has to be findable with a thumb.
+ *
+ * It raises the minimum rather than setting a size, so a control that is already big enough
+ * is untouched and one sized in pixels keeps its own look on a desk. 44px is the figure both
+ * Apple and Android publish.
+ */
+@media (max-width: 700px) {
+  .ws-tap {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /*
  * Design tokens, carried over unchanged from the Watchsheet design canvas.
  *

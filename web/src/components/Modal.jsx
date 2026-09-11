@@ -74,7 +74,7 @@ export function ModalTitle({ children, onClose }) {
       <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.02em', minWidth: 0 }}>{children}</div>
       <button
         type="button"
-        className="ws-chip"
+        className="ws-chip ws-tap"
         aria-label="Close"
         onClick={onClose}
         style={{ width: 32, height: 32, flex: 'none', borderRadius: 9, display: 'grid', placeItems: 'center' }}

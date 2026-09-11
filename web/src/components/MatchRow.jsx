@@ -186,7 +186,7 @@ export function MatchRow({ match, onOpen, onToggle }) {
           type="button"
           title={watched ? 'Remove from history' : 'Mark watched'}
           aria-label={watched ? 'Remove from history' : 'Mark watched'}
-          className="ws-pop"
+          className="ws-pop ws-tap"
           onClick={(e) => {
             e.stopPropagation();
             onToggle(match);
