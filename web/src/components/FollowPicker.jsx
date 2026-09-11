@@ -69,7 +69,7 @@ export function FollowPicker({ name, onDone }) {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: 'radial-gradient(120% 90% at 50% -10%, var(--accent-soft), transparent 60%)',
         paddingBottom: 96,
       }}

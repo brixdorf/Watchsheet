@@ -13,7 +13,9 @@ import { useRef } from 'react';
 export function SearchField({ value, onChange, placeholder, label, size = 'md' }) {
   const input = useRef(null);
   const big = size === 'md';
-  const pad = big ? { padding: '14px 44px 14px 44px', borderRadius: 14, fontSize: 15.5 } : { padding: '9px 36px 9px 36px', borderRadius: 10, fontSize: 14 };
+  // Size lives in a class rather than here, so the phone rule in styles.css can lift it to
+  // the 16px that stops iOS zooming on focus. Inline would win over the media query.
+  const pad = big ? { padding: '14px 44px 14px 44px', borderRadius: 14 } : { padding: '9px 36px 9px 36px', borderRadius: 10 };
 
   return (
     <div style={{ position: 'relative' }}>
@@ -31,7 +33,7 @@ export function SearchField({ value, onChange, placeholder, label, size = 'md' }
       />
       <input
         ref={input}
-        className="ws-field ws-field--card"
+        className={`ws-field ws-field--card ${big ? 'ws-search--md' : 'ws-search--sm'}`}
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}

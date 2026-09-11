@@ -144,7 +144,7 @@ export function Onboarding({ onSignedIn }) {
     <div
       ref={rootRef}
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'grid',
         placeItems: 'center',
         padding: '28px 20px',

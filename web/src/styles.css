@@ -53,6 +53,9 @@ body {
   margin: 0;
   padding: 0;
   background: var(--bg);
+  /* clip, not hidden: hidden makes this a scroll container and the sticky header stops
+     sticking (measured). clip contains a stray wide child without that side effect. */
+  overflow-x: clip;
 }
 
 body {
@@ -187,6 +190,17 @@ textarea::placeholder {
 
 .ws-field--card {
   background: var(--card);
+}
+
+/* Sizes the two search fields and the note textareas, so one media query can lift them all. */
+.ws-search--md {
+  font-size: 15.5px;
+}
+.ws-search--sm {
+  font-size: 14px;
+}
+.ws-field--note {
+  font-size: 14.5px;
 }
 
 /**
@@ -348,8 +362,12 @@ textarea::placeholder {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 4px;
   scrollbar-width: none;
+  /* A strip inside a flex row will not shrink without this, and pushes the page wide
+     instead of scrolling. Header.jsx used to supply it inline at the one call site. */
+  min-width: 0;
 }
 .ws-strip::-webkit-scrollbar {
   display: none;
@@ -357,6 +375,24 @@ textarea::placeholder {
 
 .ws-spin {
   animation: ws-spin 0.9s linear infinite;
+}
+
+/**
+ * Phones.
+ *
+ * The one breakpoint in the app. 700px rather than a device width, because it is the point
+ * where the header's two rows stop fitting on one line, not the point where any particular
+ * handset starts.
+ */
+@media (max-width: 700px) {
+  /* Under 16px, iOS Safari zooms the page on focus, which is itself a sideways scroll.
+     Every field is a .ws-field, so lifting them here covers the lot. */
+  .ws-field,
+  .ws-search--md,
+  .ws-search--sm,
+  .ws-field--note {
+    font-size: 16px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

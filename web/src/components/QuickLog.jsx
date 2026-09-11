@@ -70,12 +70,12 @@ export function QuickLog({ match, onSkip, onSave, onOpenDetail }) {
 
         <Eyebrow style={{ fontSize: 11, fontWeight: 600, marginBottom: 9 }}>Note (optional)</Eyebrow>
         <textarea
-          className="ws-field ws-field--card"
+          className="ws-field ws-field--card ws-field--note"
           rows={3}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Bad game, great pie."
-          style={{ borderRadius: 12, fontSize: 14.5, resize: 'vertical', fontFamily: 'inherit', marginBottom: 16 }}
+          style={{ borderRadius: 12, resize: 'vertical', fontFamily: 'inherit', marginBottom: 16 }}
         />
 
         <div style={{ display: 'flex', gap: 8 }}>

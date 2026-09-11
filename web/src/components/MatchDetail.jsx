@@ -162,12 +162,12 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
 
               <Eyebrow>Note (optional)</Eyebrow>
               <textarea
-                className="ws-field ws-field--card"
+                className="ws-field ws-field--card ws-field--note"
                 rows={3}
                 value={note}
                 onChange={(e) => { setNote(e.target.value); setSaved(false); }}
                 placeholder="Bad game, great pie."
-                style={{ borderRadius: 12, fontSize: 14.5, resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ borderRadius: 12, resize: 'vertical', fontFamily: 'inherit' }}
               />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>

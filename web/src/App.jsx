@@ -336,7 +336,7 @@ export default function App() {
 
   if (booting) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}>
         <Spinner label="Starting" />
       </div>
     );
@@ -362,7 +362,7 @@ export default function App() {
   const seasonLabel = season === 'all' ? 'All seasons' : season;
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
       <Header
         user={user}
         tab={tab}
