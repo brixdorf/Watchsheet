@@ -63,7 +63,7 @@ export function CustomMatch({ onClose, onSave }) {
         It gets filed into season {seasonHint} automatically.
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div className="ws-pair" style={{ marginBottom: 12 }}>
         <div>
           <label htmlFor="cm-home" style={label}>Home</label>
           <input id="cm-home" className="ws-field ws-field--card" style={field} value={form.home}
@@ -82,7 +82,7 @@ export function CustomMatch({ onClose, onSave }) {
           onChange={(e) => set({ competition: e.target.value })} placeholder="Sidemen Charity Match" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div className="ws-pair ws-pair--wide" style={{ marginBottom: 12 }}>
         <div>
           <label htmlFor="cm-date" style={label}>Date</label>
           <input id="cm-date" type="date" className="ws-field ws-field--card" style={field} value={form.date}
@@ -95,7 +95,7 @@ export function CustomMatch({ onClose, onSave }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div className="ws-pair" style={{ marginBottom: 12 }}>
         <div>
           <label htmlFor="cm-hs" style={label}>Home goals</label>
           <input id="cm-hs" type="number" min="0" className="ws-field ws-field--card" style={field} value={form.homeScore}
@@ -114,7 +114,7 @@ export function CustomMatch({ onClose, onSave }) {
           <span style={{ fontSize: 11.5, color: 'var(--dim2)' }}>{ratingText(form.rating)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Stars value={form.rating} onChange={(rating) => set({ rating })} size={38} />
+          <Stars value={form.rating} onChange={(rating) => set({ rating })} size={44} flex />
         </div>
       </div>
 

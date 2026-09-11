@@ -83,13 +83,13 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
             background: 'radial-gradient(90% 120% at 50% 0%, var(--accent-soft), transparent 65%)',
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', gap: 12, alignItems: 'center' }}>
             <TeamBlock side={match.home} />
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', minWidth: 0 }}>
               <div
                 data-anim="score"
+                className="ws-score"
                 style={{
-                  fontSize: 44,
                   fontWeight: 800,
                   letterSpacing: '-.05em',
                   lineHeight: 1,
@@ -156,7 +156,7 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-                <Stars value={rating} onChange={setRating} size={40} />
+                <Stars value={rating} onChange={setRating} size={44} flex />
                 <div style={{ fontSize: 12, color: 'var(--dim)', marginLeft: 6 }}>{ratingText(rating)}</div>
               </div>
 
@@ -216,9 +216,13 @@ export function MatchDetail({ match, onClose, onSetLog, onRemoveLog, onDeleteCus
 
 function TeamBlock({ side }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textAlign: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textAlign: 'center', minWidth: 0 }}>
       <Crest crest={side.crest} short={side.short} color={side.color} name={side.name} size={52} radius={15} fontSize={15} />
-      <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{side.name}</div>
+      {/* Moenchengladbach is one word and wider than the track it sits in, so it is allowed
+          to break rather than decide the width of the whole scoreboard. */}
+      <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2, minWidth: 0, overflowWrap: 'anywhere' }}>
+        {side.name}
+      </div>
     </div>
   );
 }

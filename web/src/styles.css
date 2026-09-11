@@ -192,6 +192,48 @@ textarea::placeholder {
   background: var(--card);
 }
 
+/**
+ * Two fields side by side.
+ *
+ * The children need min-width: 0 or each 1fr track floors at the input's intrinsic size,
+ * which is about 180px whatever the container. Two of those in a 286px sheet is how the
+ * custom match form ended up wider than the sheet that clips it.
+ */
+.ws-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.ws-pair--wide {
+  grid-template-columns: 1.4fr 1fr;
+}
+.ws-pair > * {
+  min-width: 0;
+}
+@media (max-width: 700px) {
+  .ws-pair,
+  .ws-pair--wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+/**
+ * The big scoreline in the match sheet.
+ *
+ * For a played match this is "5 - 1" and narrow. For an upcoming one it is the kick-off
+ * time, which at 44px is about 165px of nowrap text, and the centre column of the
+ * scoreboard is an auto track: it wins that space outright and leaves the two team columns
+ * narrower than the crests inside them. Smaller on a phone fixes the cause.
+ */
+.ws-score {
+  font-size: 44px;
+}
+@media (max-width: 700px) {
+  .ws-score {
+    font-size: 30px;
+  }
+}
+
 /* Sizes the two search fields and the note textareas, so one media query can lift them all. */
 .ws-search--md {
   font-size: 15.5px;
