@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { OTPInput, REGEXP_ONLY_DIGITS } from 'input-otp';
 import { api, ApiError } from '../lib/api.js';
-import { isValidEmail } from '../lib/email.js';
+import { isValidEmail, suggestEmail } from '../lib/email.js';
 import { animateScreen } from '../lib/anim.js';
 
 /**
@@ -61,6 +61,19 @@ export function Onboarding({ onSignedIn }) {
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
+  // The typo hint waits for a pause in typing, so it does not flash "gmail.com" at someone
+  // who is halfway through typing it. `settled` is the value it has caught up with; `kept` is
+  // a suggestion turned down, which is not offered again.
+  const [settled, setSettled] = useState('');
+  const [kept, setKept] = useState(null);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(email), 700);
+    return () => clearTimeout(t);
+  }, [email]);
+
+  const suggestion = suggestEmail(email);
+  const showSuggestion = !!suggestion && suggestion !== kept && settled === email;
+
   /**
    * The cooldown is the server's to define, so the countdown is seeded from what it reports:
    * `resendInMs` when a code goes out, `retryAfterMs` when one is refused for being early.
@@ -82,6 +95,10 @@ export function Onboarding({ onSignedIn }) {
 
   const sendCode = async () => {
     setError('');
+    // A likely typo the hint has not had the chance to show yet stops this send and shows it,
+    // so a quick Enter cannot post a code to gamil.com. Sending again with the hint on screen
+    // is a deliberate choice to keep what was typed, and goes through.
+    if (suggestion && suggestion !== kept && settled !== email) return setSettled(email);
     if (!isValidEmail(email)) return setError('That email does not look right.');
     setBusy(true);
     try {
@@ -237,6 +254,14 @@ export function Onboarding({ onSignedIn }) {
               style={{ marginBottom: 8 }}
             />
 
+            {showSuggestion && (
+              <EmailSuggestion
+                suggestion={suggestion}
+                onUse={() => { setEmail(suggestion); setSettled(suggestion); setError(''); }}
+                onKeep={() => setKept(suggestion)}
+              />
+            )}
+
             {error && <ErrorLine>{error}</ErrorLine>}
 
             <button
@@ -390,6 +415,68 @@ function waitLabel(seconds) {
   if (seconds < 90) return `${seconds}s`;
   const mins = Math.ceil(seconds / 60);
   return mins < 60 ? `${mins} min` : `${Math.ceil(mins / 60)}h`;
+}
+
+/**
+ * "Did you mean sam@gmail.com?" under the email field. The domain is the part that changed, so
+ * it carries the weight; the local part is shown as typed so there is no doubt whose address
+ * it is. Keeping the original is as easy as taking the suggestion, since near misses can be
+ * real domains.
+ */
+function EmailSuggestion({ suggestion, onUse, onKeep }) {
+  const at = suggestion.lastIndexOf('@');
+  return (
+    <div
+      role="status"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '4px 8px',
+        marginBottom: 10,
+        padding: '4px 4px 4px 12px',
+        borderRadius: 11,
+        background: 'var(--accent-soft)',
+        fontSize: 13.5,
+      }}
+    >
+      <span style={{ flex: '1 1 170px', minWidth: 0, overflowWrap: 'anywhere', color: 'var(--dim)', padding: '6px 0' }}>
+        Did you mean{' '}
+        <span style={{ color: 'var(--fg)' }}>
+          {suggestion.slice(0, at)}@<strong style={{ fontWeight: 700 }}>{suggestion.slice(at + 1)}</strong>
+        </span>
+        ?
+      </span>
+      <span style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+        <button
+          type="button"
+          className="ws-tap"
+          onClick={onUse}
+          style={{
+            border: 'none',
+            borderRadius: 9,
+            padding: '6px 12px',
+            background: 'var(--accent)',
+            color: 'var(--accent-ink)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          Use it
+        </button>
+        <button
+          type="button"
+          className="ws-quiet ws-tap"
+          onClick={onKeep}
+          aria-label="Keep the address as typed"
+          style={{ borderRadius: 9, padding: '6px 10px', fontSize: 13, fontWeight: 600 }}
+        >
+          Keep
+        </button>
+      </span>
+    </div>
+  );
 }
 
 function ErrorLine({ children }) {
