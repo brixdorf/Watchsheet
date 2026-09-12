@@ -26,8 +26,8 @@ npm run build               # builds web/dist
 npm start                   # Express serves the API and the built app on :3000
 ```
 
-Requires Node 22 or newer: the database layer uses the built-in `node:sqlite` module, so
-there is no native build step and no compiler needed.
+Requires Node 22.12 or newer: the database layer uses the built-in `node:sqlite` module, so
+there is no native build step and no compiler needed, and `.env` is read by Node itself.
 
 ### From your phone
 
@@ -65,6 +65,7 @@ you are on, or the port stays shut whatever the config says.
 | `npm run sync -- --season=2027` | rotate a specific season instead of the competition's own |
 | `npm run sync:status` | today's spend, seed progress, fixture counts |
 | `npm run migrate` | apply the schema (also runs automatically on boot) |
+| `npm test` | provider parsing, sync edge cases against a stand-in provider, and the API against a throwaway database; sends no mail and spends no requests |
 
 The **Admin** screen shows the same status inside the app, and can run any of the sync
 commands without a shell on the server.
@@ -97,7 +98,9 @@ two lanes:
   synced first, one page at a time, with the cursor stored on the competition row. A full
   pass over ~36 competitions costs roughly 100–150 requests, so it completes over about two
   days and then starts again. Fixture lists change slowly; this is fine.
-- **Refresh (scores).** Matches already held that kicked off recently and are not yet final,
+- **Refresh (scores).** Matches already held that have kicked off and are neither final nor
+  postponed (a postponed fixture keeps its old date at the provider, and the rotation brings
+  in the new one),
   queried as `leagueId` + `date`. The set of pairs comes from local data, so it only spends
   requests where fixtures actually exist, typically a handful even on a busy weekend.
 
