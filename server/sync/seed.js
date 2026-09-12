@@ -224,10 +224,12 @@ export async function resolveTeams({ maxRequests = Infinity, log = () => {} } = 
     const queries = [team.seed_name, ...(seedDef.aliases || [])].slice(0, 2);
 
     let match = null;
+    let tried = 0;
     for (const q of queries) {
       if (spent >= maxRequests || remaining() < 1) break;
       const payload = await listTeams({ name: q, limit: 20 });
       spent++;
+      tried++;
       const candidates = rowsOf(payload).map(normalizeTeam);
       match = pickBest({ name: team.seed_name, aliases: seedDef.aliases }, candidates, (row) => {
         // A country seed must map to a national side, and vice versa.
@@ -250,10 +252,13 @@ export async function resolveTeams({ maxRequests = Infinity, log = () => {} } = 
       );
       resolved++;
       log(`team  ok  ${team.seed_name} -> ${match.row.name} #${match.row.providerId}`);
-    } else {
+    } else if (tried === queries.length) {
       run('UPDATE teams SET resolved = -1 WHERE id = ?', team.id);
       log(`team  --  ${team.seed_name} not found`);
     }
+    // Otherwise the request cap or the budget cut the lookups short. Marking the team missing
+    // then would have been permanent, on the strength of a search that never ran, so it stays
+    // pending and the next run asks the rest.
   }
 
   const left = get('SELECT COUNT(*) AS n FROM teams WHERE is_seed = 1 AND resolved = 0').n;
