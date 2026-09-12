@@ -1,8 +1,17 @@
-import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+// Node reads .env itself, so this needs no dependency. Variables already set in the
+// environment win, exactly as they did under dotenv, and the file is found from the project
+// root rather than whatever directory a command happens to run in. It is optional: a
+// deployment may supply everything through the environment instead.
+try {
+  process.loadEnvFile(path.join(rootDir, '.env'));
+} catch (err) {
+  if (err.code !== 'ENOENT') throw err;
+}
 
 const num = (v, fallback) => {
   const n = Number.parseInt(v ?? '', 10);

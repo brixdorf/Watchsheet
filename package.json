@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "A personal football match-tracking logbook.",
+  "engines": {
+    "node": ">=22.12"
+  },
   "workspaces": [
     "server",
     "web"
