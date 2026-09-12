@@ -123,7 +123,11 @@ authRouter.post('/verify', (req, res) => {
       run('UPDATE users SET last_login_at = ? WHERE id = ?', Date.now(), existing.id);
       return existing;
     }
-    const name = (result.name || email.split('@')[0]).slice(0, 80);
+    // Empty rather than a guess from the address. NOT NULL permits the empty string, so
+    // this needs no migration, and it is what the client reads as "not named yet" when it
+    // decides whether to show the name step. A local part is a poor name and, once
+    // written, is indistinguishable from one the account holder chose.
+    const name = (result.name || '').slice(0, 80);
     const now = Date.now();
     const created = run(
       'INSERT INTO users (email, name, created_at, last_login_at) VALUES (?, ?, ?, ?)',

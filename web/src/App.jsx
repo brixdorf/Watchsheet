@@ -15,6 +15,7 @@ import { Header } from './components/Header.jsx';
 import { History } from './components/History.jsx';
 import { HomeFeed } from './components/HomeFeed.jsx';
 import { MatchDetail } from './components/MatchDetail.jsx';
+import { NameStep } from './components/NameStep.jsx';
 import { Onboarding } from './components/Onboarding.jsx';
 import { QuickLog } from './components/QuickLog.jsx';
 import { SearchScreen } from './components/SearchScreen.jsx';
@@ -109,21 +110,26 @@ export default function App() {
     setFilters(filterRes);
   }, []);
 
-  useEffect(() => {
-    if (!user || needsPicker) return;
-    loadCore().catch(() => flash('Could not load your data', 'negative'));
-  }, [user, needsPicker, loadCore, flash]);
+  // Signed in but not finished signing up. Stated once: three effects and the render all
+  // need it, and a feed request firing underneath an onboarding screen is wasted work on a
+  // session that has not chosen anything to put in it yet.
+  const onboarding = !user || !user.name || needsPicker;
 
   useEffect(() => {
-    if (!user || needsPicker || tab !== 'home' || !feedStale.current) return;
+    if (onboarding) return;
+    loadCore().catch(() => flash('Could not load your data', 'negative'));
+  }, [onboarding, loadCore, flash]);
+
+  useEffect(() => {
+    if (onboarding || tab !== 'home' || !feedStale.current) return;
     feedStale.current = false;
     api.feed().then(setFeed).catch(() => {});
-  }, [user, needsPicker, tab]);
+  }, [onboarding, tab]);
 
   // Stats drive the Home hero strip as well as the Stats tab, so they follow the season
   // selector regardless of which tab is open.
   useEffect(() => {
-    if (!user || needsPicker) return;
+    if (onboarding) return;
     let live = true;
     api
       .stats(season)
@@ -132,7 +138,7 @@ export default function App() {
     return () => {
       live = false;
     };
-  }, [user, needsPicker, season]);
+  }, [onboarding, season]);
 
   useEffect(() => {
     if (!user || tab !== 'history') return undefined;
@@ -347,6 +353,11 @@ export default function App() {
 
   if (!user) {
     return <Onboarding onSignedIn={signedIn} />;
+  }
+
+  // Name first, so the picker can greet them by it.
+  if (!user.name) {
+    return <NameStep onNamed={setUser} />;
   }
 
   if (needsPicker) {

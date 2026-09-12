@@ -5,7 +5,7 @@ import { Eyebrow } from './layout.jsx';
 
 /**
  * Account details. One field for now, which is the one that was missing: the name is
- * collected once at sign-up and there was no way to change it afterwards.
+ * collected once, on the way in, and there was no way to change it afterwards.
  *
  * The email is shown but not editable. It is the identity a sign-in code is sent to, so
  * changing it is a different job from correcting a typo in a display name.
