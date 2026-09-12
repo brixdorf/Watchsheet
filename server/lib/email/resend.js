@@ -5,17 +5,17 @@ import { otpHtml, otpSubject, otpText } from './template.js';
 /**
  * Resend provider: live outbound sending.
  *
- * Deployment shape this is written against: the domain stays on another mail host, which keeps the
- * MX records and receives replies, while Resend sends. Those coexist because inbound (MX)
- * and sending authentication (SPF/DKIM) are separate records, but Resend still has to be
- * authorised to send as the domain, so the domain must be verified at
- * https://resend.com/domains and the exact records it prints published in DNS.
+ * Deployment shape this is written against: example.com stays on another mail host, which keeps the
+ * apex MX records and receives mail, while Resend sends from the mail.example.com
+ * subdomain. Resend's DKIM, SPF and bounce MX all live under that subdomain, so none of them
+ * touch another mail host's records on the apex.
  *
- * Because the from address is a no-reply, replies are pointed back at the another mail host mailbox with
- * MAIL_REPLY_TO. Without it a reply to a sign-in code would bounce into nothing.
+ * Resend is used for sending only; its receiving side is deliberately not enabled. Replies
+ * to a sign-in code are therefore pointed at the another mail host inbox with the reply-to header, which
+ * config defaults to hi@example.com.
  *
- * Nothing here runs until RESEND_API_KEY and MAIL_FROM are set: `configured` stays false and
- * the factory falls back to console delivery rather than failing sign-in.
+ * Nothing here runs until RESEND_API_KEY is set (the sender has a default): `configured`
+ * stays false and the factory falls back to console delivery rather than failing sign-in.
  */
 
 export class NotConfiguredError extends Error {

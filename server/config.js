@@ -46,9 +46,15 @@ export const config = {
   },
 
   mail: {
-    provider: process.env.MAIL_PROVIDER || 'console',
-    from: process.env.MAIL_FROM || 'Watchsheet <watchsheet@example.com>',
-    replyTo: process.env.MAIL_REPLY_TO || '',
+    // A Resend key is the only thing that has to be supplied to send real mail: with one set
+    // and no explicit MAIL_PROVIDER, Resend is used. MAIL_PROVIDER=console still forces local
+    // delivery, which is how to test the flow on a machine that holds a live key.
+    provider:
+      process.env.MAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'console'),
+    // The subdomain verified at Resend, so its SPF and DKIM sit apart from another mail host's on the apex.
+    from: process.env.MAIL_FROM || 'Watchsheet <auth@mail.example.com>',
+    // Resend only sends here, by choice, so replies are pointed at the another mail host inbox instead.
+    replyTo: process.env.MAIL_REPLY_TO || 'hi@example.com',
     resendApiKey: process.env.RESEND_API_KEY || '',
     devEcho: bool(process.env.OTP_DEV_ECHO, process.env.NODE_ENV !== 'production'),
   },
