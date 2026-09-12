@@ -65,6 +65,12 @@ export function History({ history, loading, filter, onFilter, seasonLabel, onOpe
           {history && history.groups.length === 0 && (
             <EmptyNote padding={36}>Nothing logged here yet.</EmptyNote>
           )}
+
+          {history && history.shown < history.total && (
+            <EmptyNote padding={20}>
+              Showing the latest {history.shown} of {history.total}. Export has every one of them.
+            </EmptyNote>
+          )}
         </>
       )}
     </div>

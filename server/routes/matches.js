@@ -149,6 +149,9 @@ matchesRouter.get('/search', (req, res) => {
   res.json({ matches, filtered: Boolean(q || competitionId || season) });
 });
 
+/** A screen of history is capped; the export is where the whole log goes. */
+const HISTORY_ROWS = 600;
+
 /* Watched history, grouped by month the way the design lays it out. */
 matchesRouter.get('/history', (req, res) => {
   const uid = req.user.id;
@@ -165,11 +168,21 @@ matchesRouter.get('/history', (req, res) => {
   if (filter === 'With notes') clauses.push("COALESCE(wl.note, '') <> ''");
   if (filter === 'Custom') clauses.push('m.is_custom = 1');
 
-  const matches = queryMatches(
+  const where = clauses.join(' AND ');
+  const matches = queryMatches(uid, where, params, `ORDER BY m.kickoff_utc DESC LIMIT ${HISTORY_ROWS}`);
+
+  // The rows stop at HISTORY_ROWS but the headline numbers must not: they used to be counted
+  // off the rows, so an account with 3,000 logged matches was told it had 600. Same filter,
+  // same visibility rule as queryMatches, counted in full.
+  const counts = get(
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN COALESCE(wl.note, '') <> '' THEN 1 ELSE 0 END) AS withNotes
+       FROM matches m
+       JOIN watch_logs wl ON wl.match_id = m.id AND wl.user_id = ?
+      WHERE (m.is_custom = 0 OR m.owner_user_id = ?) AND ${where}`,
     uid,
-    clauses.join(' AND '),
-    params,
-    'ORDER BY m.kickoff_utc DESC LIMIT 600',
+    uid,
+    ...params,
   );
 
   // Months are the viewer's, as they already are in stats and export. On a server running in
@@ -189,8 +202,9 @@ matchesRouter.get('/history', (req, res) => {
 
   res.json({
     groups: groups.map((g) => ({ ...g, count: g.matches.length })),
-    total: matches.length,
-    withNotes: matches.filter((m) => m.log?.note).length,
+    total: counts.total,
+    withNotes: counts.withNotes ?? 0,
+    shown: matches.length,
   });
 });
 
