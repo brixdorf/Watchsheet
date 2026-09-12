@@ -23,7 +23,7 @@
     "sync:status": "node server/sync/cli.js status"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "cross-env": "^7.0.3"
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0"
   }
 }
