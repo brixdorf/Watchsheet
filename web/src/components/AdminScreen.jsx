@@ -95,21 +95,24 @@ export function AdminScreen({ onClose, onFlash }) {
   const [cap, setCap] = useState(6);
   const [season, setSeason] = useState('');
   const [rotation, setRotation] = useState(null);
+  const [catalog, setCatalog] = useState(null);
   const [running, setRunning] = useState(false);
   const [confirming, setConfirming] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, o, u, r] = await Promise.all([
+      const [s, o, u, r, c] = await Promise.all([
         api.syncStatus(),
         api.adminOverview(),
         api.adminUsers(),
         api.adminRotation(),
+        api.adminCatalog(),
       ]);
       setStatus(s);
       setOverview(o);
       setUsers(u);
       setRotation(r);
+      setCatalog(c);
       setError('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load the admin data.');
@@ -183,7 +186,17 @@ export function AdminScreen({ onClose, onFlash }) {
     }
   };
 
-  const ready = status && overview && users;
+  const unresolvedCount = (catalog?.competitions?.length ?? 0) + (catalog?.teams?.length ?? 0);
+  const seedTotal = status
+    ? status.seed.competitions.resolved
+      + status.seed.competitions.pending
+      + status.seed.competitions.missing
+      + status.seed.teams.resolved
+      + status.seed.teams.pending
+      + status.seed.teams.missing
+    : 0;
+
+  const ready = status && overview && users && catalog;
 
   return (
     <div>
@@ -507,6 +520,37 @@ export function AdminScreen({ onClose, onFlash }) {
           </div>
 
           <SectionHeading
+            title="Unresolved"
+            sub="Seed entries the provider did not return. Fix an alias in seedData.js, then re-match above."
+            meta={unresolvedCount ? `${unresolvedCount} of ${seedTotal}` : 'all resolved'}
+          />
+          <div data-anim="row" className="ws-card" style={{ padding: 16, marginBottom: 26 }}>
+            {!unresolvedCount && (
+              <EmptyNote>Everything in the seed list resolved. Nothing to do here.</EmptyNote>
+            )}
+            {!!catalog?.competitions?.length && (
+              <>
+                <Eyebrow>Competitions</Eyebrow>
+                <div style={{ marginBottom: catalog.teams.length ? 16 : 0 }}>
+                  {catalog.competitions.map((c) => (
+                    <Unresolved key={`c${c.id}`} row={c} />
+                  ))}
+                </div>
+              </>
+            )}
+            {!!catalog?.teams?.length && (
+              <>
+                <Eyebrow>Teams</Eyebrow>
+                <div>
+                  {catalog.teams.map((t) => (
+                    <Unresolved key={`t${t.id}`} row={t} />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <SectionHeading
             title="Accounts"
             sub={`Sessions last ${users.sessionTtlDays} days, then a fresh code is needed.`}
             meta={`${users.users.length} total`}
@@ -610,6 +654,38 @@ export function AdminScreen({ onClose, onFlash }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * One entry that did not resolve. "missing" has been looked for and finalised, so only an
+ * alias will move it; "pending" has simply not been reached yet.
+ */
+function Unresolved({ row }) {
+  const missing = row.status === 'missing';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '5px 0' }}>
+      <div style={{ fontSize: 13.5, minWidth: 0, flex: '1 1 140px' }}>
+        {row.name}
+        {row.where && <span style={{ color: 'var(--dim2)' }}> · {row.where}</span>}
+      </div>
+      <span
+        style={{
+          flex: 'none',
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: '.06em',
+          textTransform: 'uppercase',
+          padding: '3px 8px',
+          borderRadius: 7,
+          color: missing ? 'var(--dim)' : 'var(--accent-txt)',
+          background: 'var(--card2)',
+          border: '1px solid var(--line)',
+        }}
+      >
+        {missing ? 'no match' : 'pending'}
+      </span>
     </div>
   );
 }

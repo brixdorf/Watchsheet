@@ -120,6 +120,37 @@ adminRouter.post('/sync/run', async (req, res) => {
 });
 
 /**
+ * The seed rows the provider never gave us.
+ *
+ * seedStatus counts these and the screen showed only the resolved total, so the names were
+ * invisible outside a SQL client. They are the only thing you can act on: a competition that
+ * came back "no match" is either genuinely not carried, or is carried under a name the
+ * matcher did not recognise, and telling those apart needs the name in front of you. Pair
+ * this with the free re-match and an alias edit is a loop you can close on one screen.
+ *
+ * Pending and missing are kept apart. Pending means seeding has not reached it yet and will;
+ * missing means it has been looked for and finalised, and only an alias will change it.
+ */
+adminRouter.get('/catalog', (_req, res) => {
+  const rows = (table, extra) =>
+    all(
+      `SELECT id, seed_name, name, resolved, ${extra} FROM ${table}
+        WHERE is_seed = 1 AND resolved <> 1
+        ORDER BY resolved, seed_name`,
+    ).map((r) => ({
+      id: r.id,
+      name: r.seed_name || r.name,
+      where: r.country_name || r.country_hint || r.country_code || '',
+      status: r.resolved === -1 ? 'missing' : 'pending',
+    }));
+
+  res.json({
+    competitions: rows('competitions', 'country_hint, country_name'),
+    teams: rows('teams', 'country_code'),
+  });
+});
+
+/**
  * Who the rotation reaches next, and a way to change that.
  *
  * The queue is least-recently-synced first, so a competition just added, or one whose

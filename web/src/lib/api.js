@@ -82,6 +82,7 @@ export const api = {
   runSync: (job, max, season) =>
     request('/admin/sync/run', { method: 'POST', body: { job, max, season } }),
   adminRotation: () => request('/admin/rotation'),
+  adminCatalog: () => request('/admin/catalog'),
   syncNext: (id) => request(`/admin/rotation/${id}/next`, { method: 'POST' }),
   runMaintenance: (job) => request('/admin/maintenance', { method: 'POST', body: { job } }),
   revokeSessions: (id) => request(`/admin/users/${id}/revoke`, { method: 'POST' }),
