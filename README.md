@@ -195,31 +195,31 @@ account. A new one is created unnamed and the first screen after the code asks w
 call you, which is also why nothing records whether that step was taken. An account with no
 name is owed it, exactly as an account with no follows is owed the picker.
 
-Delivery is a swappable seam. `MAIL_PROVIDER=console` (the default) prints the code to the
-server output and, with `OTP_DEV_ECHO=true`, shows it on the verify screen, so the flow is
-genuinely usable without a provider. The code itself is real either way; only delivery is
-local.
+Delivery is a swappable seam. With no Resend key the code is printed to the server output
+and, with `OTP_DEV_ECHO=true`, shown on the verify screen, so the flow is genuinely usable
+without a provider. The code itself is real either way; only delivery is local.
 
-`server/lib/email/resend.js` is the live path, using the `resend` SDK. It is written against
-the intended deployment: the domain stays on **another mail host**, which keeps the MX records and
-receives replies, while **Resend** does the outbound sending. Because the sender is a
-no-reply address, `MAIL_REPLY_TO` points replies back at the another mail host mailbox. Otherwise a reply
-to a sign-in code would go nowhere.
+`server/lib/email/resend.js` is the live path, using the `resend` SDK. **To switch it on, set
+`RESEND_API_KEY` in `.env` and restart.** Nothing else is needed: everything else is already
+set in `server/config.js`.
 
-To switch it on:
+- **Sender:** `Watchsheet <auth@mail.example.com>`. The subdomain is the one
+  verified at Resend, and its DKIM (`resend._domainkey.notifications`), SPF and bounce MX
+  (`send.notifications`) are already published. Because they sit under the subdomain, they
+  never touch **another mail host**'s MX and SPF records on the apex, so there is nothing to merge.
+- **Reply-to:** `hi@example.com`, the another mail host inbox. Resend is used for sending only, and its
+  receiving side is deliberately left off, so replies are routed to another mail host by header instead.
+- **Provider:** Resend whenever a key is present. `MAIL_PROVIDER=console` forces local delivery
+  anyway, and `MAIL_FROM` / `MAIL_REPLY_TO` override the two addresses.
 
-1. Add the domain at [resend.com/domains](https://resend.com/domains) and publish **exactly**
-   the DKIM and SPF records it prints. Merge its SPF include into the existing record rather
-   than replacing it: one TXT record holding both another mail host and Resend, never two.
-2. Leave the MX records pointing at another mail host. Inbound mail is unaffected; MX and sending
-   authentication are independent.
-3. If the DNS is behind Cloudflare, set those records to **DNS only**. Proxying them breaks
-   verification.
-4. Set `RESEND_API_KEY`, `MAIL_FROM` (an address on the verified domain) and `MAIL_REPLY_TO`,
-   then `MAIL_PROVIDER=resend`.
+Once mail is really being delivered, the verify screen stops echoing the code whatever
+`OTP_DEV_ECHO` says. Without a key the module reports itself unconfigured, and the factory
+falls back to console delivery rather than failing sign-in.
 
-Until the key and sender are both set the module reports itself unconfigured and the factory
-falls back to console delivery rather than failing sign-in. Two details worth knowing: each
+The email follows the reader's light or dark theme where the client exposes it (Apple Mail,
+Outlook for Mac, Samsung Mail, Thunderbird). Everywhere else, Gmail and Outlook for Windows
+included, it is dark: the dark palette is the inline one, and light is layered on top only
+through `prefers-color-scheme`. Two details worth knowing: each
 issued code carries an idempotency key (`signin-code/<row id>`), so a retry can never deliver
 a second copy of the same code; and the account rate limit of ten requests a second is
 absorbed with one retry, since a user who tripped it would otherwise have to sit out the
