@@ -45,7 +45,22 @@ if (config.isProd) {
   app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
-app.use((err, _req, res, _next) => {
+/**
+ * A refusal from the body parser is the caller's mistake, not ours: it carries its own 4xx
+ * status, and answering 500 with a stack in the log made an oversized note or a truncated
+ * request look like a server fault. Anything without a client status still is one.
+ */
+const CLIENT_ERRORS = {
+  'entity.too.large': 'That is too much to send in one go.',
+  'entity.parse.failed': 'That request did not arrive in one piece. Try again.',
+};
+
+app.use((err, _req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = Number(err.status ?? err.statusCode);
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: CLIENT_ERRORS[err.type] ?? 'That request could not be read.' });
+  }
   console.error(err);
   res.status(500).json({ error: 'Something went wrong' });
 });
