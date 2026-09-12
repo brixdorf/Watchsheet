@@ -1,6 +1,7 @@
 import express from 'express';
 import { all } from '../db/index.js';
 import { requireAuth } from '../lib/session.js';
+import { toViewerClock, viewerOffset } from '../lib/tz.js';
 
 export const exportRouter = express.Router();
 exportRouter.use(requireAuth);
@@ -54,7 +55,7 @@ function rowsFor(userId, scope) {
 
 function toRecords(rows, { tzOffsetMin, tzName }) {
   return rows.map((r) => {
-    const d = new Date(r.kickoff_utc - tzOffsetMin * 60_000);
+    const d = toViewerClock(r.kickoff_utc, tzOffsetMin);
     const hours = d.getUTCHours();
     const suffix = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 === 0 ? 12 : hours % 12;
@@ -81,9 +82,7 @@ exportRouter.get('/count', (req, res) => {
 exportRouter.get('/', (req, res) => {
   const scope = req.query.scope ? String(req.query.scope) : 'all';
   const format = String(req.query.format ?? 'CSV').toUpperCase() === 'JSON' ? 'JSON' : 'CSV';
-  const tzOffsetMin = Number.isFinite(Number(req.query.tzOffset))
-    ? Number(req.query.tzOffset)
-    : new Date().getTimezoneOffset();
+  const tzOffsetMin = viewerOffset(req.query.tzOffset);
   const tzName = String(req.query.tz ?? '').slice(0, 40);
 
   const records = toRecords(rowsFor(req.user.id, scope), { tzOffsetMin, tzName });

@@ -2,6 +2,7 @@ import express from 'express';
 import { all } from '../db/index.js';
 import { followSets } from '../lib/present.js';
 import { requireAuth } from '../lib/session.js';
+import { toViewerClock, viewerOffset } from '../lib/tz.js';
 
 export const statsRouter = express.Router();
 statsRouter.use(requireAuth);
@@ -45,12 +46,10 @@ const rank = (counts) =>
 statsRouter.get('/', (req, res) => {
   const uid = req.user.id;
   const season = req.query.season && req.query.season !== 'all' ? String(req.query.season) : null;
-  const tzOffsetMin = Number.isFinite(Number(req.query.tzOffset))
-    ? Number(req.query.tzOffset)
-    : new Date().getTimezoneOffset();
+  const tzOffsetMin = viewerOffset(req.query.tzOffset);
 
   // Shift into the viewer's wall clock, then read the UTC parts of the shifted instant.
-  const local = (ts) => new Date(ts - tzOffsetMin * 60_000);
+  const local = (ts) => toViewerClock(ts, tzOffsetMin);
 
   const rows = all(
     `SELECT m.id, m.kickoff_utc, m.home_score, m.away_score, m.competition_id, m.is_custom,
