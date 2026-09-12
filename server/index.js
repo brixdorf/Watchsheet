@@ -13,10 +13,9 @@ import { logsRouter } from './routes/logs.js';
 import { matchesRouter } from './routes/matches.js';
 import { statsRouter } from './routes/stats.js';
 import { startCron } from './sync/cron.js';
+import { isMain } from './lib/ismain.js';
 
-migrate();
-
-const app = express();
+export const app = express();
 app.disable('x-powered-by');
 // Without this req.ip is the proxy, not the caller. See lib/clientIp.js for why the
 // Cloudflare header is preferred over the value this produces.
@@ -66,17 +65,28 @@ app.use((err, _req, res, next) => {
   res.status(500).json({ error: 'Something went wrong' });
 });
 
-app.listen(config.port, () => {
-  // Every interface, not just loopback. In development the phone reaches the app through
-  // Vite, which proxies here, so this port is not the one to open in a browser.
-  console.log(`Watchsheet API listening on port ${config.port} (${config.env})`);
-  startCron();
-});
+/**
+ * Everything with a side effect beyond building the app: the schema, the listener, the sync
+ * schedule and the hourly sweep. Kept out of module load so the tests can import `app` and
+ * serve it on a spare port against a throwaway database, with no cron and no timers.
+ */
+export function start() {
+  migrate();
 
-// Housekeeping: expired sessions and stale codes, hourly.
-pruneSessions();
-pruneCodes();
-setInterval(() => {
+  app.listen(config.port, () => {
+    // Every interface, not just loopback. In development the phone reaches the app through
+    // Vite, which proxies here, so this port is not the one to open in a browser.
+    console.log(`Watchsheet API listening on port ${config.port} (${config.env})`);
+    startCron();
+  });
+
+  // Housekeeping: expired sessions and stale codes, hourly.
   pruneSessions();
   pruneCodes();
-}, 3_600_000).unref();
+  setInterval(() => {
+    pruneSessions();
+    pruneCodes();
+  }, 3_600_000).unref();
+}
+
+if (isMain(import.meta.url)) start();
