@@ -80,6 +80,7 @@ export const api = {
   adminOverview: () => request('/admin/overview'),
   adminUsers: () => request('/admin/users'),
   runSync: (job, max) => request('/admin/sync/run', { method: 'POST', body: { job, max } }),
+  runMaintenance: (job) => request('/admin/maintenance', { method: 'POST', body: { job } }),
   revokeSessions: (id) => request(`/admin/users/${id}/revoke`, { method: 'POST' }),
   deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 };

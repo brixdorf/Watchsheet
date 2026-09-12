@@ -19,6 +19,43 @@ const JOBS = [
 
 const CAPS = [2, 6, 12, 25];
 
+/**
+ * The jobs that spend nothing.
+ *
+ * Separated from the sync pills on purpose: those cost provider requests out of a budget of
+ * 85 a day, these cost none at all, and a control that might spend money should not sit in
+ * the same row as one that cannot.
+ */
+const CHORES = [
+  ['data', 'Data', 'Re-apply popularity ranks, drop pre-floor fixtures, re-stamp seasons, reunite split teams.'],
+  ['catalog', 'Re-match catalog', 'Match unresolved seed rows against the cached provider catalog. No requests.'],
+  ['prune', 'Prune', 'Clear expired sessions and spent codes.'],
+];
+
+/** Counts, as a sentence. Every job here is idempotent, so "nothing" is the usual answer. */
+function choreSummary(job, r) {
+  const bits =
+    job === 'data'
+      ? [
+          [r.ranked, 'rank', 'ranks'],
+          [r.purged, 'fixture dropped', 'fixtures dropped'],
+          [r.restamped, 'season re-stamped', 'seasons re-stamped'],
+          [r.merged, 'team merged', 'teams merged'],
+        ]
+      : job === 'catalog'
+        ? [[r.resolved, 'competition matched', 'competitions matched']]
+        : [
+            [r.sessions, 'session', 'sessions'],
+            [r.codes, 'code', 'codes'],
+          ];
+
+  const said = bits.filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+  if (said.length) return said.join(' · ');
+  return job === 'catalog' && r.unresolved
+    ? `nothing matched, ${r.unresolved} still unresolved`
+    : 'nothing to change';
+}
+
 /** "1 request", not "1 requests". */
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -48,6 +85,8 @@ export function AdminScreen({ onClose, onFlash }) {
   const [error, setError] = useState('');
 
   const [job, setJob] = useState('auto');
+  const [chore, setChore] = useState('data');
+  const [choring, setChoring] = useState(false);
   const [cap, setCap] = useState(6);
   const [running, setRunning] = useState(false);
   const [confirming, setConfirming] = useState(null);
@@ -84,6 +123,19 @@ export function AdminScreen({ onClose, onFlash }) {
       onFlash(err instanceof ApiError ? err.message : 'Could not start the sync.', 'negative');
     } finally {
       setRunning(false);
+    }
+  };
+
+  const runChore = async () => {
+    setChoring(true);
+    try {
+      const res = await api.runMaintenance(chore);
+      onFlash(choreSummary(chore, res.result), 'accent');
+      await load();
+    } catch (err) {
+      onFlash(err instanceof ApiError ? err.message : 'Could not run that.', 'negative');
+    } finally {
+      setChoring(false);
     }
   };
 
@@ -313,6 +365,56 @@ export function AdminScreen({ onClose, onFlash }) {
             {status.fixtures.earliest && (
               <Line label="Covering" value={`${status.fixtures.earliest} → ${status.fixtures.latest}`} />
             )}
+          </div>
+
+          <SectionHeading
+            title="Maintenance"
+            sub="Local jobs that cost no provider requests. Safe to run at any time, and again."
+            meta="free"
+          />
+          <div data-anim="row" className="ws-card" style={{ padding: 16, marginBottom: 26 }}>
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
+              {CHORES.map(([id, text, hint]) => (
+                <button
+                  key={id}
+                  type="button"
+                  title={hint}
+                  onClick={() => setChore(id)}
+                  aria-pressed={chore === id}
+                  className="ws-tap"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '7px 12px',
+                    borderRadius: 9,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    background: chore === id ? 'var(--accent)' : 'var(--card2)',
+                    color: chore === id ? 'var(--accent-ink)' : 'var(--fg)',
+                    border: `1px solid ${chore === id ? 'var(--accent)' : 'var(--line)'}`,
+                  }}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 12.5, color: 'var(--dim)', marginBottom: 14, lineHeight: 1.5 }}>
+              {CHORES.find(([id]) => id === chore)?.[2]}
+            </div>
+
+            <button
+              type="button"
+              onClick={runChore}
+              disabled={choring}
+              className="ws-primary ws-run-sync"
+              style={{ padding: '10px 16px', fontSize: 14 }}
+            >
+              <i className={choring ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-wrench'} />
+              {choring ? 'Running…' : 'Run'}
+            </button>
           </div>
 
           <SectionHeading

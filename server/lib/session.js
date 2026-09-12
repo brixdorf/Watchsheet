@@ -83,5 +83,5 @@ export function requireAuth(req, res, next) {
 }
 
 export function pruneSessions() {
-  run('DELETE FROM sessions WHERE expires_at < ?', Date.now());
+  return run('DELETE FROM sessions WHERE expires_at < ?', Date.now()).changes;
 }

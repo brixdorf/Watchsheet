@@ -186,5 +186,5 @@ export function verifyCode(email, code) {
 
 /** Drops codes that expired over a day ago. Called on the sweep alongside sessions. */
 export function pruneCodes() {
-  run('DELETE FROM otp_codes WHERE expires_at < ?', Date.now() - 86_400_000);
+  return run('DELETE FROM otp_codes WHERE expires_at < ?', Date.now() - 86_400_000).changes;
 }

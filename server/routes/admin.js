@@ -1,12 +1,14 @@
 import express from 'express';
 import { config } from '../config.js';
 import { all, get, run } from '../db/index.js';
+import { runMaintenance } from '../db/migrate.js';
 import { requireAdmin, isAdmin } from '../lib/admin.js';
-import { requireAuth } from '../lib/session.js';
+import { pruneCodes } from '../lib/otp.js';
+import { pruneSessions, requireAuth } from '../lib/session.js';
 import { budgetStatus, remaining } from '../sync/budget.js';
 import { isRunning, lastRun, nextRun, tick } from '../sync/cron.js';
 import { fixtureStatus } from '../sync/fixtures.js';
-import { seedStatus } from '../sync/seed.js';
+import { matchCompetitions, seedStatus } from '../sync/seed.js';
 
 export const adminRouter = express.Router();
 adminRouter.use(requireAuth, requireAdmin);
@@ -101,6 +103,36 @@ adminRouter.post('/sync/run', async (req, res) => {
 
   const result = await tick({ slice: max, job });
   res.json({ result, budget: budgetStatus(), lastRun: lastRun() });
+});
+
+/**
+ * The jobs that cost nothing.
+ *
+ * None of these touch the provider, so none of them are guarded by the budget and none can
+ * fail halfway and leave a bill. They already run on their own - the data jobs on every
+ * boot, the prune on an hourly timer - and what was missing was a way to run one when you
+ * have just changed something and want to see it take effect.
+ *
+ * The counts come back because "it worked" and "it changed nothing" look identical
+ * otherwise, and with idempotent jobs the second is the normal answer.
+ */
+const MAINTENANCE = {
+  // Re-applies popularity ranks, drops pre-floor fixtures, re-stamps seasons, reunites
+  // teams the provider split. What every boot does.
+  data: () => runMaintenance(),
+  // Re-matches unresolved seed rows against the cached provider catalog. No network: the
+  // catalog is already mirrored locally, which is what makes an alias edit free to retry.
+  catalog: () => matchCompetitions({ finalize: false }),
+  // Expired sessions and spent codes.
+  prune: () => ({ sessions: pruneSessions(), codes: pruneCodes() }),
+};
+
+adminRouter.post('/maintenance', (req, res) => {
+  const job = req.body?.job;
+  if (!Object.hasOwn(MAINTENANCE, job)) {
+    return res.status(400).json({ error: 'No such maintenance job.' });
+  }
+  res.json({ ok: true, job, result: MAINTENANCE[job]() });
 });
 
 /** Signs a user out everywhere. Their next visit needs a fresh code. */

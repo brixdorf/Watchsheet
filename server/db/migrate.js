@@ -157,6 +157,24 @@ function mergeSplitTeams() {
   return merged;
 }
 
+/**
+ * The data jobs, apart from the schema work.
+ *
+ * All four are local, free and idempotent, which is why they run on every boot rather than
+ * once behind a version number: stating an invariant somewhere it gets re-checked beats a
+ * one-shot migration. Exported so the admin screen runs exactly the same code on demand,
+ * which is the point of editing popularity.js or an alias and wanting it to take effect
+ * without a restart.
+ */
+export function runMaintenance() {
+  return {
+    ranked: applyPopularity(),
+    purged: purgeBelowFloor(),
+    restamped: restampSeasons(),
+    merged: mergeSplitTeams(),
+  };
+}
+
 export function migrate() {
   db.exec(fs.readFileSync(path.join(here, 'schema.sql'), 'utf8'));
   ensureColumn('otp_codes', 'ip', 'TEXT');
@@ -173,12 +191,7 @@ export function migrate() {
   if (gaps.teams.length || gaps.competitions.length) {
     console.warn('Seeds with no popularity rank:', [...gaps.competitions, ...gaps.teams].join(', '));
   }
-  return {
-    ranked: applyPopularity(),
-    purged: purgeBelowFloor(),
-    restamped: restampSeasons(),
-    merged: mergeSplitTeams(),
-  };
+  return runMaintenance();
 }
 
 if (isMain(import.meta.url)) {
