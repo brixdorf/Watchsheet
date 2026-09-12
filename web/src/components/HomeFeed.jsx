@@ -29,8 +29,21 @@ function Group({ title, sub, meta, matches, empty, onOpen, onToggle, last }) {
 }
 
 export function HomeFeed({ feed, stats, seasonLabel, onOpen, onToggle }) {
-  const mine = (list) => list.filter((m) => m.followedTeam);
-  const rest = (list) => list.filter((m) => !m.followedTeam);
+  /**
+   * Splits a section into the sides you follow and the rest of your competitions.
+   *
+   * When there is nothing in the first half there is no second half either: an account that
+   * follows only competitions gets one list under the ordinary heading, rather than an
+   * "Also on" with nothing above it to be "also" to.
+   */
+  const split = (list) => {
+    const ours = list.filter((m) => m.followedTeam);
+    const others = list.filter((m) => !m.followedTeam);
+    return ours.length ? { ours, others } : { ours: others, others: [] };
+  };
+
+  const up = split(feed.upcoming);
+  const played = split(feed.recent);
   const heroStats = [
     {
       icon: 'ph-fill ph-eye',
@@ -98,18 +111,22 @@ export function HomeFeed({ feed, stats, seasonLabel, onOpen, onToggle }) {
 
       <Group
         title="Coming up"
-        sub="The sides you follow"
-        meta={`${mine(feed.upcoming).length} fixtures`}
-        matches={mine(feed.upcoming)}
-        empty={rest(feed.upcoming).length ? undefined : 'Nothing scheduled. Follow a few more sides on the Following tab.'}
+        sub={
+          up.others.length
+            ? 'The sides you follow'
+            : `From the ${feed.followCount} teams and competitions you follow`
+        }
+        meta={`${up.ours.length} fixtures`}
+        matches={up.ours}
+        empty="Nothing scheduled. Follow a few more sides on the Following tab."
         onOpen={onOpen}
         onToggle={onToggle}
       />
       <Group
         title="Also on"
         sub={`Elsewhere in the ${feed.followCount} teams and competitions you follow`}
-        meta={`${rest(feed.upcoming).length} fixtures`}
-        matches={rest(feed.upcoming)}
+        meta={`${up.others.length} fixtures`}
+        matches={up.others}
         onOpen={onOpen}
         onToggle={onToggle}
       />
@@ -118,17 +135,17 @@ export function HomeFeed({ feed, stats, seasonLabel, onOpen, onToggle }) {
         title="Just played"
         sub="Tick off what you actually watched"
         meta={`${feed.untagged} untagged`}
-        matches={mine(feed.recent)}
-        empty={rest(feed.recent).length ? undefined : 'Nothing has finished yet. Once fixtures sync they will land here.'}
+        matches={played.ours}
+        empty="Nothing has finished yet. Once fixtures sync they will land here."
         onOpen={onOpen}
         onToggle={onToggle}
-        last={!rest(feed.recent).length}
+        last={!played.others.length}
       />
       <Group
         title="Also played"
         sub="From the competitions you follow"
-        meta={`${rest(feed.recent).length} matches`}
-        matches={rest(feed.recent)}
+        meta={`${played.others.length} matches`}
+        matches={played.others}
         onOpen={onOpen}
         onToggle={onToggle}
         last
