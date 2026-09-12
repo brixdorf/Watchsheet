@@ -62,9 +62,10 @@ export const resendProvider = {
   },
 
   /**
-   * The SDK reports failures as a returned `error`, not a thrown one, so both shapes have to
-   * be handled: a returned error becomes a throw for the caller, and a genuine network fault
-   * propagates on its own. Either way the route answers 502 and the user is told to retry.
+   * The SDK never throws for a failed send: an API refusal comes back as the returned
+   * `error` with Resend's own name (`validation_error`, `rate_limit_exceeded` and so on),
+   * and a network fault comes back the same way as `application_error`. Both become a throw
+   * here, so the route answers 502 and the user is told to retry.
    */
   async sendOtp({ to, name, code, expiresAt, codeId }) {
     const missing = missingSettings();
@@ -78,7 +79,9 @@ export const resendProvider = {
       html: otpHtml({ name, code, minutes, replyTo: config.mail.replyTo }),
       text: otpText({ name, code, minutes, replyTo: config.mail.replyTo }),
       tags: [{ name: 'category', value: 'signin_code' }],
-      attachments: [{ filename: 'watchsheet-logo.png', content: logoPng(), contentId: LOGO_CID }],
+      attachments: [
+        { filename: 'watchsheet-logo.png', contentType: 'image/png', content: logoPng(), contentId: LOGO_CID },
+      ],
     };
     if (config.mail.replyTo) message.replyTo = config.mail.replyTo;
 
