@@ -57,7 +57,7 @@ export function Stats({ stats, seasonLabel }) {
       icon: 'ph-fill ph-moon-stars',
       label: 'Insomniac index',
       value: stats.night,
-      sub: 'kick-offs at 9pm or later. Sleep is for people without a backlog.',
+      sub: 'kick-offs between 9pm and 5am. Sleep is for people without a backlog.',
     },
     {
       icon: 'ph-fill ph-armchair',

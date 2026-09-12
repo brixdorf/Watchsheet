@@ -14,14 +14,27 @@ statsRouter.use(requireAuth);
  *
  * Anything time-of-day or calendar shaped (late kick-offs, matches per day, month buckets)
  * is computed in the viewer's timezone, passed in as `tzOffset`, the value of
- * Date.getTimezoneOffset(). Without it a 9pm kick-off would count as late or not
- * depending on where the server happens to run.
+ * Date.getTimezoneOffset(). Without it the same kick-off would count as late or not
+ * depending on where the server happens to run, which for a late-night window is the
+ * difference between an evening game and one that runs past midnight.
  */
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // A football season read left to right: August through May.
 const SEASON_MONTHS = [7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 const AVG_MATCH_MINUTES = 115;
+
+/**
+ * What counts as a late kick-off, in the viewer's own clock.
+ *
+ * Both ends are named because the window wraps. It used to be a lone `>= 21`, which reads
+ * as "9pm onwards" but silently means "9, 10 or 11pm", since an hour rolls over to 0 at
+ * midnight. Every 00:30 and 01:00 kick-off, which is the most unambiguously late slot there
+ * is, failed the test. Stating the far end makes the wrap impossible to miss.
+ */
+const LATE_FROM = 21;
+const LATE_UNTIL = 5;
+const isLateHour = (hour) => hour >= LATE_FROM || hour < LATE_UNTIL;
 
 /** Weeks starting Monday, matching the design's streak definition. */
 const weekIndex = (ts) => Math.floor((ts - Date.UTC(1970, 0, 5)) / 604_800_000);
@@ -91,7 +104,7 @@ statsRouter.get('/', (req, res) => {
     }
 
     const d = local(r.kickoff_utc);
-    if (d.getUTCHours() >= 21) night++;
+    if (isLateHour(d.getUTCHours())) night++;
 
     const dayKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
     dayCounts.set(dayKey, (dayCounts.get(dayKey) ?? 0) + 1);
