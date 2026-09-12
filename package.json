@@ -25,8 +25,5 @@
   "devDependencies": {
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3"
-  },
-  "allowScripts": {
-    "esbuild@0.25.12": true
   }
 }
