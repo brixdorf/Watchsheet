@@ -203,7 +203,7 @@ export function AdminScreen({ onClose, onFlash }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
         <button
           type="button"
-          className="ws-chip"
+          className="ws-chip ws-tap"
           aria-label="Back"
           onClick={onClose}
           style={{ width: 36, height: 36, flex: 'none', display: 'grid', placeItems: 'center', fontSize: 16 }}
@@ -219,9 +219,9 @@ export function AdminScreen({ onClose, onFlash }) {
         </div>
         <button
           type="button"
-          className="ws-quiet"
+          className="ws-quiet ws-tap"
           onClick={load}
-          style={{ padding: '8px 12px', borderRadius: 10, fontSize: 13, display: 'flex', alignItems: 'center', gap: 7 }}
+          style={{ padding: '8px 12px', borderRadius: 10, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
           <i className="ph ph-arrow-clockwise" style={{ fontSize: 14 }} /> Refresh
         </button>
@@ -314,7 +314,11 @@ export function AdminScreen({ onClose, onFlash }) {
                   title={hint}
                   onClick={() => setJob(id)}
                   aria-pressed={job === id}
+                  className="ws-tap"
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     padding: '7px 12px',
                     borderRadius: 9,
                     cursor: 'pointer',
@@ -357,8 +361,11 @@ export function AdminScreen({ onClose, onFlash }) {
                   type="button"
                   onClick={() => setCap(n)}
                   aria-pressed={cap === n}
+                  className="ws-cap ws-tap"
                   style={{
-                    minWidth: 42,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     padding: '7px 10px',
                     borderRadius: 9,
                     cursor: 'pointer',
@@ -377,7 +384,7 @@ export function AdminScreen({ onClose, onFlash }) {
                 type="button"
                 onClick={runNow}
                 disabled={running || status.budget.remaining < 1}
-                className="ws-primary ws-run-sync"
+                className="ws-primary ws-run-sync ws-tap"
                 style={{ padding: '10px 16px', fontSize: 14 }}
               >
                 <i className={running ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-play'} />
@@ -511,7 +518,7 @@ export function AdminScreen({ onClose, onFlash }) {
               type="button"
               onClick={runChore}
               disabled={choring}
-              className="ws-primary ws-run-sync"
+              className="ws-primary ws-run-sync ws-tap"
               style={{ padding: '10px 16px', fontSize: 14 }}
             >
               <i className={choring ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-wrench'} />
@@ -601,10 +608,17 @@ export function AdminScreen({ onClose, onFlash }) {
                   <div style={{ display: 'flex', gap: 7, marginLeft: 'auto' }}>
                     <button
                       type="button"
-                      className="ws-quiet"
+                      className="ws-quiet ws-tap"
                       onClick={() => revoke(u)}
                       disabled={!u.sessions}
-                      style={{ padding: '6px 10px', borderRadius: 9, fontSize: 12.5 }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '6px 10px',
+                        borderRadius: 9,
+                        fontSize: 12.5,
+                      }}
                     >
                       Sign out
                     </button>
@@ -614,7 +628,11 @@ export function AdminScreen({ onClose, onFlash }) {
                           <button
                             type="button"
                             onClick={() => remove(u)}
+                            className="ws-tap"
                             style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                               padding: '6px 10px',
                               borderRadius: 9,
                               fontSize: 12.5,
@@ -629,9 +647,16 @@ export function AdminScreen({ onClose, onFlash }) {
                           </button>
                           <button
                             type="button"
-                            className="ws-quiet"
+                            className="ws-quiet ws-tap"
                             onClick={() => setConfirming(null)}
-                            style={{ padding: '6px 10px', borderRadius: 9, fontSize: 12.5 }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px 10px',
+                              borderRadius: 9,
+                              fontSize: 12.5,
+                            }}
                           >
                             Cancel
                           </button>
@@ -639,9 +664,17 @@ export function AdminScreen({ onClose, onFlash }) {
                       ) : (
                         <button
                           type="button"
-                          className="ws-quiet"
+                          className="ws-quiet ws-tap"
                           onClick={() => setConfirming(u.id)}
-                          style={{ padding: '6px 10px', borderRadius: 9, fontSize: 12.5, color: 'var(--neg)' }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '6px 10px',
+                            borderRadius: 9,
+                            fontSize: 12.5,
+                            color: 'var(--neg)',
+                          }}
                         >
                           Delete
                         </button>

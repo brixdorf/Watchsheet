@@ -1,3 +1,13 @@
+/*
+ * The spend pills carry their own floor so the four line up. It is stated here rather than
+ * inline because an inline style beats a stylesheet whatever the media query, which would
+ * leave these the only controls on the screen that .ws-tap could not reach. Declared before
+ * .ws-tap so that, at equal specificity, the phone rule is the later one and wins.
+ */
+.ws-cap {
+  min-width: 42px;
+}
+
 /**
  * A control that has to be findable with a thumb.
  *
