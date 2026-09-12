@@ -1,14 +1,18 @@
 /**
  * The sign-in code email.
  *
- * Built to the same design tokens as the app (the ground, the card, the green accent, the
- * condensed uppercase eyebrow) so the mail that lets someone in looks like the thing they
- * are being let into.
+ * Built to the same design as the app (the ground, the card, the green accent, Barlow, the
+ * logo) so the mail that lets someone in looks like the thing they are being let into.
  *
  * Email is not the web, so the constraints are different and drive the markup:
  *   - tables and inline styles, because Outlook renders with Word and ignores modern CSS;
- *   - no images at all, so nothing depends on a remote fetch a client may block. The badge
- *     is the app's own monogram fallback, drawn as a table cell;
+ *   - the logo is web/public/logo.svg rendered to logo.png, since Gmail and Outlook refuse
+ *     SVG, and it travels with the message as an inline attachment referenced by `cid:`
+ *     rather than a remote URL, so it shows without the reader allowing remote images;
+ *   - Barlow is the site's face, loaded from Google Fonts where the client allows web fonts
+ *     (Apple Mail, iOS Mail, Outlook for Mac, Samsung Mail, Thunderbird). Everywhere else
+ *     the stack falls back to Helvetica or Arial. The link is hidden from Outlook for
+ *     Windows, which otherwise drops to Times New Roman on seeing a font it cannot load;
  *   - a hidden preheader, or the client previews whatever text comes first;
  *   - the code repeated in the subject, so it is readable from a notification without
  *     opening anything;
@@ -26,6 +30,9 @@
  * the whole block, and the mobile padding should not be lost along with the theme.
  */
 
+/** The content id the logo attachment is sent under, and the `cid:` the markup points at. */
+export const LOGO_CID = 'watchsheet-logo';
+
 const DARK = {
   bg: '#080a09',
   card: '#121715',
@@ -34,9 +41,7 @@ const DARK = {
   fg: '#f1f5f2',
   dim: '#8b9792',
   dim2: '#5f6c67',
-  accent: '#00e27a',
   accentTxt: '#00e27a',
-  accentInk: '#04140b',
 };
 
 // The app's [data-theme='light'] tokens from web/src/styles.css.
@@ -48,15 +53,13 @@ const LIGHT = {
   fg: '#0b1210',
   dim: '#5b6a64',
   dim2: '#8a9791',
-  accent: '#00a757',
   accentTxt: '#007a3f',
-  accentInk: '#ffffff',
 };
 
 const C = DARK;
 
-const FONT = "'Barlow','Helvetica Neue',Helvetica,Arial,sans-serif";
-const MONO = "'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace";
+const FONT = "Barlow,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const FONT_LINK = 'https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;800&display=swap';
 
 function escapeHtml(value) {
   return String(value).replace(
@@ -90,24 +93,34 @@ export function otpText({ name, code, minutes, replyTo }) {
   return blocks.filter(Boolean).join('\n\n');
 }
 
-export function otpHtml({ name, code, minutes, replyTo }) {
+/**
+ * `logoSrc` is only for rendering the message outside a mail client, such as a preview,
+ * where a `cid:` reference has no attachment to resolve against.
+ */
+export function otpHtml({ name, code, minutes, replyTo, logoSrc = `cid:${LOGO_CID}` }) {
   const greeting = firstName(name) ? `Hi ${firstName(name)},` : 'Hi,';
   const safeCode = escapeHtml(code);
   const expiry = `${minutes} minute${minutes === 1 ? '' : 's'}`;
 
   return `<!doctype html>
-<html lang="en">
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
 <title>${escapeHtml(otpSubject(code))}</title>
+<!--[if !mso]><!-->
+<link rel="stylesheet" href="${FONT_LINK}">
+<!--<![endif]-->
+<!--[if mso]>
+<style>td, div, span { font-family: Arial, Helvetica, sans-serif !important; }</style>
+<![endif]-->
 <style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (max-width:520px) {
     .ws-pad { padding-left:20px !important; padding-right:20px !important; }
-    .ws-code { font-size:30px !important; letter-spacing:.18em !important; }
+    .ws-code { font-size:34px !important; letter-spacing:.16em !important; text-indent:.16em !important; }
   }
 </style>
 <style>
@@ -116,8 +129,6 @@ export function otpHtml({ name, code, minutes, replyTo }) {
     .ws-card { background:${LIGHT.card} !important; border-color:${LIGHT.line} !important; }
     .ws-well { background:${LIGHT.bg} !important; border-color:${LIGHT.line} !important; }
     .ws-card2 { background:${LIGHT.card2} !important; }
-    .ws-badge { background:${LIGHT.accent} !important; }
-    .ws-badge-ink { color:${LIGHT.accentInk} !important; }
     .ws-fg { color:${LIGHT.fg} !important; }
     .ws-dim { color:${LIGHT.dim} !important; }
     .ws-dim2 { color:${LIGHT.dim2} !important; }
@@ -136,21 +147,17 @@ export function otpHtml({ name, code, minutes, replyTo }) {
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:460px;width:100%;">
 
-          <!-- Wordmark: the app header, as type only so nothing has to load. -->
+          <!-- Wordmark: the app header, logo and all. -->
           <tr>
             <td style="padding:0 4px 20px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td width="46" style="width:46px;">
-                    <table class="ws-badge" role="presentation" cellpadding="0" cellspacing="0" border="0" width="46" style="width:46px;height:46px;background:${C.accent};border-radius:13px;">
-                      <tr>
-                        <td class="ws-badge-ink" align="center" valign="middle" height="46" style="height:46px;font-family:${FONT};font-size:24px;font-weight:800;color:${C.accentInk};line-height:1;">W</td>
-                      </tr>
-                    </table>
+                  <td width="48" valign="middle" style="width:48px;">
+                    <img src="${escapeHtml(logoSrc)}" width="48" height="48" alt="Watchsheet" style="display:block;width:48px;height:48px;border:0;outline:none;text-decoration:none;border-radius:12px;">
                   </td>
-                  <td style="padding-left:12px;font-family:${FONT};">
-                    <div class="ws-fg" style="font-size:23px;font-weight:800;letter-spacing:-.03em;color:${C.fg};line-height:1.1;">Watchsheet</div>
-                    <div class="ws-accent" style="font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:${C.accentTxt};padding-top:2px;">Your season, logged</div>
+                  <td valign="middle" style="padding-left:12px;font-family:${FONT};">
+                    <div class="ws-fg" style="font-size:24px;font-weight:800;letter-spacing:-.03em;color:${C.fg};line-height:1.05;">Watchsheet</div>
+                    <div class="ws-accent" style="font-size:11.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:${C.accentTxt};padding-top:3px;">Your season, logged</div>
                   </td>
                 </tr>
               </table>
@@ -163,24 +170,24 @@ export function otpHtml({ name, code, minutes, replyTo }) {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td class="ws-pad" style="padding:28px 28px 8px;font-family:${FONT};">
-                    <div class="ws-fg" style="font-size:21px;font-weight:800;letter-spacing:-.02em;color:${C.fg};line-height:1.2;">Here is your sign-in code</div>
-                    <div class="ws-dim" style="font-size:14.5px;color:${C.dim};padding-top:8px;line-height:1.5;">${greeting} enter these six digits to get into Watchsheet.</div>
+                    <div class="ws-fg" style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:${C.fg};line-height:1.2;">Here is your sign-in code</div>
+                    <div class="ws-dim" style="font-size:15px;color:${C.dim};padding-top:8px;line-height:1.5;">${greeting} enter these six digits to get into Watchsheet.</div>
                   </td>
                 </tr>
 
-                <!-- The code -->
+                <!-- The code, in the same face and figures the app uses for every number. -->
                 <tr>
                   <td class="ws-pad" style="padding:20px 28px 0;">
                     <table class="ws-well" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.bg};border:1px solid ${C.line};border-radius:14px;">
                       <tr>
-                        <td class="ws-code ws-fg" align="center" style="padding:20px 12px;font-family:${MONO};font-size:34px;font-weight:700;letter-spacing:.26em;color:${C.fg};text-indent:.26em;line-height:1.1;">${safeCode}</td>
+                        <td class="ws-code ws-fg" align="center" style="padding:18px 12px;font-family:${FONT};font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.22em;text-indent:.22em;color:${C.fg};line-height:1.1;">${safeCode}</td>
                       </tr>
                     </table>
                   </td>
                 </tr>
 
                 <tr>
-                  <td class="ws-pad ws-dim" align="center" style="padding:12px 28px 0;font-family:${FONT};font-size:12.5px;color:${C.dim};">
+                  <td class="ws-pad ws-dim" align="center" style="padding:12px 28px 0;font-family:${FONT};font-size:13px;font-weight:500;color:${C.dim};">
                     Expires in ${expiry} · one use only
                   </td>
                 </tr>
@@ -190,7 +197,7 @@ export function otpHtml({ name, code, minutes, replyTo }) {
                   <td class="ws-pad" style="padding:24px 28px 28px;">
                     <table class="ws-card2" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.card2};border-radius:12px;">
                       <tr>
-                        <td class="ws-dim" style="padding:13px 15px;font-family:${FONT};font-size:12.5px;color:${C.dim};line-height:1.55;">
+                        <td class="ws-dim" style="padding:13px 15px;font-family:${FONT};font-size:13px;color:${C.dim};line-height:1.55;">
                           Did not ask for this? You can ignore it. The code is useless on its own, and nobody can reach your account without it.
                         </td>
                       </tr>
@@ -203,7 +210,7 @@ export function otpHtml({ name, code, minutes, replyTo }) {
 
           <!-- Footer -->
           <tr>
-            <td class="ws-dim2" style="padding:20px 8px 0;font-family:${FONT};font-size:11.5px;color:${C.dim2};line-height:1.6;">
+            <td class="ws-dim2" style="padding:20px 8px 0;font-family:${FONT};font-size:12px;color:${C.dim2};line-height:1.6;">
               Watchsheet, a private logbook for football. One tap to mark a match watched.
               ${replyTo ? `<br>Replies to this message go to <span class="ws-dim" style="color:${C.dim};">${escapeHtml(replyTo)}</span>.` : ''}
             </td>

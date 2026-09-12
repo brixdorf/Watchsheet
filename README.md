@@ -219,7 +219,12 @@ falls back to console delivery rather than failing sign-in.
 The email follows the reader's light or dark theme where the client exposes it (Apple Mail,
 Outlook for Mac, Samsung Mail, Thunderbird). Everywhere else, Gmail and Outlook for Windows
 included, it is dark: the dark palette is the inline one, and light is layered on top only
-through `prefers-color-scheme`. Two details worth knowing: each
+through `prefers-color-scheme`.
+
+It is set in Barlow, the site's face, where the client loads web fonts, and carries the site
+logo as an inline attachment (`server/lib/email/logo.png`, rendered from
+`web/public/logo.svg` at 144px, since Gmail and Outlook refuse SVG). Re-render the PNG if the
+logo changes. Two details worth knowing: each
 issued code carries an idempotency key (`signin-code/<row id>`), so a retry can never deliver
 a second copy of the same code; and the account rate limit of ten requests a second is
 absorbed with one retry, since a user who tripped it would otherwise have to sit out the

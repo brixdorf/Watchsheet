@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs';
 import { Resend } from 'resend';
 import { config } from '../../config.js';
-import { otpHtml, otpSubject, otpText } from './template.js';
+import { LOGO_CID, otpHtml, otpSubject, otpText } from './template.js';
+
+// The logo rides along as an inline attachment the markup references by content id, so it
+// needs no hosted URL and shows without the reader allowing remote images. Read once, lazily.
+let logo = null;
+const logoPng = () => (logo ??= readFileSync(new URL('./logo.png', import.meta.url)));
 
 /**
  * Resend provider: live outbound sending.
@@ -72,6 +78,7 @@ export const resendProvider = {
       html: otpHtml({ name, code, minutes, replyTo: config.mail.replyTo }),
       text: otpText({ name, code, minutes, replyTo: config.mail.replyTo }),
       tags: [{ name: 'category', value: 'signin_code' }],
+      attachments: [{ filename: 'watchsheet-logo.png', content: logoPng(), contentId: LOGO_CID }],
     };
     if (config.mail.replyTo) message.replyTo = config.mail.replyTo;
 
