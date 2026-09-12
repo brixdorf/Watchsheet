@@ -564,6 +564,20 @@ textarea::placeholder {
      instead of scrolling. Header.jsx used to supply it inline at the one call site. */
   min-width: 0;
 }
+/*
+ * A scroller's children must keep their own width.
+ *
+ * These are flex items, so they shrink to fit by default, and every pill in here is
+ * white-space: nowrap. A nowrap label in a shrunken box does not wrap or ellipsis, it
+ * spills out of the button and lands on top of its neighbour, which is what the search
+ * screen's competition filters did: ten of them in a phone-width row, each squeezed to
+ * about half its text. Scrolling is the whole point of the strip, so nothing in it should
+ * ever give up width to avoid it.
+ */
+.ws-strip > * {
+  flex: none;
+}
+
 .ws-strip::-webkit-scrollbar {
   display: none;
 }
