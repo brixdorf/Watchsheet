@@ -8,6 +8,7 @@ import {
 } from '../lib/present.js';
 import { seasonIdFor, DATA_FLOOR_MS } from '../lib/season.js';
 import { requireAuth } from '../lib/session.js';
+import { toViewerClock, viewerOffset } from '../lib/tz.js';
 
 export const matchesRouter = express.Router();
 matchesRouter.use(requireAuth);
@@ -171,10 +172,13 @@ matchesRouter.get('/history', (req, res) => {
     'ORDER BY m.kickoff_utc DESC LIMIT 600',
   );
 
+  // Months are the viewer's, as they already are in stats and export. On a server running in
+  // UTC a match at 01:30 on 1 September in India was filed under August.
+  const offset = viewerOffset(req.query.tzOffset);
   const groups = [];
   for (const m of matches) {
-    const d = new Date(m.kickoff);
-    const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const d = toViewerClock(m.kickoff, offset);
+    const label = `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
     let group = groups.at(-1);
     if (!group || group.label !== label) {
       group = { label, matches: [] };
@@ -226,9 +230,14 @@ matchesRouter.post('/custom', (req, res) => {
   if (!home || !away) return res.status(400).json({ error: 'Both sides need a name.' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Pick a date.' });
 
-  // Parsed in local time, matching what the user typed into the date and time fields.
-  const kickoff = new Date(`${date}T${time}:00`).getTime();
+  // The fields hold the viewer's wall clock, so they are read as UTC and moved by the viewer's
+  // offset. Parsing them in the server's own zone put a 15:00 kick-off entered in India at
+  // 20:30 wherever the server runs on UTC.
+  const kickoff = Date.parse(`${date}T${time}:00Z`) + viewerOffset(body.tzOffset) * 60_000;
   if (!Number.isFinite(kickoff)) return res.status(400).json({ error: 'Pick a date.' });
+  // The season follows the date as typed. Read back through the instant, an entry just after
+  // midnight on 1 June could land in the previous season on a server behind the viewer.
+  const season = seasonIdFor(new Date(`${date}T12:00:00`));
 
   const score = (v) => {
     if (v === '' || v == null) return null;
@@ -250,7 +259,7 @@ matchesRouter.post('/custom', (req, res) => {
       kickoff,
       score(body.homeScore),
       score(body.awayScore),
-      seasonIdFor(new Date(kickoff)),
+      season,
       uid,
       Date.now(),
     );

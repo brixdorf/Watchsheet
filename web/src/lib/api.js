@@ -54,10 +54,16 @@ export const api = {
 
   feed: () => request('/matches/feed'),
   search: (params) => request(`/matches/search${qs(params)}`),
-  history: (params) => request(`/matches/history${qs(params)}`),
+  history: (params) => request(`/matches/history${qs({ ...params, tzOffset: tzOffset() })}`),
   seasons: () => request('/matches/seasons'),
   match: (id) => request(`/matches/${id}`),
-  addCustom: (data) => request('/matches/custom', { method: 'POST', body: data }),
+  // The offset is taken for the date and time typed, not for today, so a kick-off entered on
+  // the far side of a daylight-saving change still lands on the hour it was typed as.
+  addCustom: (data) =>
+    request('/matches/custom', {
+      method: 'POST',
+      body: { ...data, tzOffset: new Date(`${data.date}T${data.time || '15:00'}:00`).getTimezoneOffset() },
+    }),
   deleteCustom: (id) => request(`/matches/${id}`, { method: 'DELETE' }),
 
   teams: () => request('/catalog/teams'),
