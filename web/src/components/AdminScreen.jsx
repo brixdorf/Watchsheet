@@ -13,9 +13,14 @@ import { Eyebrow, EmptyNote, SectionHeading, Spinner } from './layout.jsx';
 
 const JOBS = [
   ['auto', 'Auto', 'Seeding if unfinished, otherwise scores then rotation.'],
-  ['sync', 'Fixtures', 'Refresh recent scores, then advance the season rotation.'],
+  ['sync', 'Fixtures', 'Refresh recent scores, then advance the season rotation. Scores get half the run.'],
+  ['scores', 'Scores', 'Only re-pull matches that kicked off recently and are not final yet.'],
+  ['rotation', 'Rotation', 'Only advance the season rotation, least recently synced competition first.'],
   ['seed', 'Catalog', 'Resolve any teams and competitions still pending.'],
 ];
+
+/** The rotation is the only lane a season applies to, so the field only appears for those. */
+const TAKES_SEASON = new Set(['auto', 'sync', 'rotation']);
 
 const CAPS = [2, 6, 12, 25];
 
@@ -88,15 +93,23 @@ export function AdminScreen({ onClose, onFlash }) {
   const [chore, setChore] = useState('data');
   const [choring, setChoring] = useState(false);
   const [cap, setCap] = useState(6);
+  const [season, setSeason] = useState('');
+  const [rotation, setRotation] = useState(null);
   const [running, setRunning] = useState(false);
   const [confirming, setConfirming] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, o, u] = await Promise.all([api.syncStatus(), api.adminOverview(), api.adminUsers()]);
+      const [s, o, u, r] = await Promise.all([
+        api.syncStatus(),
+        api.adminOverview(),
+        api.adminUsers(),
+        api.adminRotation(),
+      ]);
       setStatus(s);
       setOverview(o);
       setUsers(u);
+      setRotation(r);
       setError('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load the admin data.');
@@ -107,10 +120,20 @@ export function AdminScreen({ onClose, onFlash }) {
     load();
   }, [load]);
 
+  const syncNext = async (comp) => {
+    try {
+      await api.syncNext(comp.id);
+      onFlash(`${comp.name} goes next`, 'accent');
+      await load();
+    } catch (err) {
+      onFlash(err instanceof ApiError ? err.message : 'Could not reorder that.', 'negative');
+    }
+  };
+
   const runNow = async () => {
     setRunning(true);
     try {
-      const res = await api.runSync(job, cap);
+      const res = await api.runSync(job, cap, season.trim() || undefined);
       const spent = res.result?.spent ?? 0;
       onFlash(
         res.result?.skipped
@@ -297,6 +320,22 @@ export function AdminScreen({ onClose, onFlash }) {
               {JOBS.find(([id]) => id === job)?.[2]}
             </div>
 
+            {TAKES_SEASON.has(job) && (
+              <>
+                <Eyebrow>Season</Eyebrow>
+                <input
+                  className="ws-field"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={season}
+                  onChange={(e) => setSeason(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="the season being played"
+                  aria-label="Season to pull instead of the current one"
+                  style={{ marginBottom: 12, maxWidth: 260 }}
+                />
+              </>
+            )}
+
             <Eyebrow>Spend at most</Eyebrow>
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
               {CAPS.map((n) => (
@@ -365,6 +404,56 @@ export function AdminScreen({ onClose, onFlash }) {
             {status.fixtures.earliest && (
               <Line label="Covering" value={`${status.fixtures.earliest} → ${status.fixtures.latest}`} />
             )}
+          </div>
+
+          <SectionHeading
+            title="Up next"
+            sub="The rotation works least recently synced first. Sending one to the front costs nothing by itself."
+            meta={rotation?.queue?.length ? `${rotation.queue.length} shown` : undefined}
+          />
+          <div data-anim="row" className="ws-card" style={{ padding: 16, marginBottom: 26 }}>
+            {!rotation?.queue?.length && <EmptyNote>No competitions are in the rotation yet.</EmptyNote>}
+            {rotation?.queue?.map((c, i) => (
+              <div
+                key={c.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  padding: '9px 0',
+                  borderTop: i ? '1px solid var(--line)' : 'none',
+                }}
+              >
+                <div style={{ minWidth: 0, flex: '1 1 160px' }}>
+                  <div
+                    style={{
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {c.name}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--dim2)' }}>
+                    {c.lastSyncedAt ? `last pulled ${ago(c.lastSyncedAt)}` : 'never pulled'}
+                    {c.partial ? ' · part way through' : ''}
+                    {c.season ? ` · ${c.season}` : ''}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="ws-quiet ws-tap"
+                  onClick={() => syncNext(c)}
+                  disabled={i === 0}
+                  style={{ fontSize: 12.5, padding: '6px 10px' }}
+                >
+                  {i === 0 ? 'next already' : 'send to front'}
+                </button>
+              </div>
+            ))}
           </div>
 
           <SectionHeading

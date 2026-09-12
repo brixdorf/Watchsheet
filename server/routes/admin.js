@@ -7,13 +7,26 @@ import { pruneCodes } from '../lib/otp.js';
 import { pruneSessions, requireAuth } from '../lib/session.js';
 import { budgetStatus, remaining } from '../sync/budget.js';
 import { isRunning, lastRun, nextRun, tick } from '../sync/cron.js';
-import { fixtureStatus } from '../sync/fixtures.js';
+import { fixtureStatus, rotationQueue } from '../sync/fixtures.js';
 import { matchCompetitions, seedStatus } from '../sync/seed.js';
 
 export const adminRouter = express.Router();
 adminRouter.use(requireAuth, requireAdmin);
 
 const MAX_MANUAL_REQUESTS = 25;
+const JOBS = ['auto', 'sync', 'scores', 'rotation', 'seed'];
+
+/**
+ * A season to pull instead of the one the clock says. The rotation normally derives the
+ * season being played, which is what stops a dozen competitions advertising a stale newest
+ * season from re-importing a back catalogue out of the daily budget. Overriding it is for
+ * fetching a specific year on purpose, so anything that is not a plausible year is ignored
+ * rather than refused: a stray value should not cost a run.
+ */
+function seasonOverride(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 2000 && n <= 2100 ? n : null;
+}
 
 /**
  * The admin screen.
@@ -85,7 +98,8 @@ adminRouter.get('/users', (_req, res) => {
  * second belt: a mis-click cannot spend the whole day's allowance in one go.
  */
 adminRouter.post('/sync/run', async (req, res) => {
-  const job = ['auto', 'sync', 'seed'].includes(req.body?.job) ? req.body.job : 'auto';
+  const job = JOBS.includes(req.body?.job) ? req.body.job : 'auto';
+  const season = seasonOverride(req.body?.season);
   const asked = Number(req.body?.max);
   const max = Number.isFinite(asked)
     ? Math.max(1, Math.min(MAX_MANUAL_REQUESTS, Math.floor(asked)))
@@ -101,8 +115,41 @@ adminRouter.post('/sync/run', async (req, res) => {
     return res.status(409).json({ error: "Today's request budget is spent. It resets at midnight UTC." });
   }
 
-  const result = await tick({ slice: max, job });
+  const result = await tick({ slice: max, job, season });
   res.json({ result, budget: budgetStatus(), lastRun: lastRun() });
+});
+
+/**
+ * Who the rotation reaches next, and a way to change that.
+ *
+ * The queue is least-recently-synced first, so a competition just added, or one whose
+ * fixtures look wrong, can be waiting two days for its turn. Clearing its cursor puts it at
+ * the head of the queue. It spends nothing by itself: the next run pays for it as it would
+ * have paid anyway, only sooner.
+ */
+adminRouter.get('/rotation', (_req, res) => {
+  // rotationQueue selects whole competition rows for the sync to work with. The screen
+  // needs a name and a date, so only those cross the wire.
+  const queue = rotationQueue()
+    .slice(0, 8)
+    .map((c) => ({
+      id: c.id,
+      name: c.display_name || c.name,
+      country: c.country_name || c.country_code || '',
+      lastSyncedAt: c.last_full_sync_at,
+      season: c.provider_season,
+      partial: c.sync_cursor > 0,
+    }));
+  res.json({ queue });
+});
+
+adminRouter.post('/rotation/:id/next', (req, res) => {
+  const id = Number(req.params.id);
+  const comp = get('SELECT id, display_name, name FROM competitions WHERE id = ?', id);
+  if (!comp) return res.status(404).json({ error: 'No such competition' });
+
+  run('UPDATE competitions SET last_full_sync_at = NULL, sync_cursor = 0 WHERE id = ?', id);
+  res.json({ ok: true, competition: comp.display_name || comp.name });
 });
 
 /**
