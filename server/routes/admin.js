@@ -1,32 +1,17 @@
 import express from 'express';
 import { config } from '../config.js';
 import { all, get, run } from '../db/index.js';
-import { runMaintenance } from '../db/migrate.js';
 import { requireAdmin, isAdmin } from '../lib/admin.js';
-import { pruneCodes } from '../lib/otp.js';
-import { pruneSessions, requireAuth } from '../lib/session.js';
+import { requireAuth } from '../lib/session.js';
 import { budgetStatus, remaining } from '../sync/budget.js';
 import { isRunning, lastRun, nextRun, tick } from '../sync/cron.js';
-import { fixtureStatus, rotationQueue } from '../sync/fixtures.js';
-import { matchCompetitions, seedStatus } from '../sync/seed.js';
+import { fixtureStatus } from '../sync/fixtures.js';
+import { seedStatus } from '../sync/seed.js';
 
 export const adminRouter = express.Router();
 adminRouter.use(requireAuth, requireAdmin);
 
 const MAX_MANUAL_REQUESTS = 25;
-const JOBS = ['auto', 'sync', 'scores', 'rotation', 'seed'];
-
-/**
- * A season to pull instead of the one the clock says. The rotation normally derives the
- * season being played, which is what stops a dozen competitions advertising a stale newest
- * season from re-importing a back catalogue out of the daily budget. Overriding it is for
- * fetching a specific year on purpose, so anything that is not a plausible year is ignored
- * rather than refused: a stray value should not cost a run.
- */
-function seasonOverride(value) {
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 2000 && n <= 2100 ? n : null;
-}
 
 /**
  * The admin screen.
@@ -98,8 +83,7 @@ adminRouter.get('/users', (_req, res) => {
  * second belt: a mis-click cannot spend the whole day's allowance in one go.
  */
 adminRouter.post('/sync/run', async (req, res) => {
-  const job = JOBS.includes(req.body?.job) ? req.body.job : 'auto';
-  const season = seasonOverride(req.body?.season);
+  const job = ['auto', 'sync', 'seed'].includes(req.body?.job) ? req.body.job : 'auto';
   const asked = Number(req.body?.max);
   const max = Number.isFinite(asked)
     ? Math.max(1, Math.min(MAX_MANUAL_REQUESTS, Math.floor(asked)))
@@ -115,102 +99,8 @@ adminRouter.post('/sync/run', async (req, res) => {
     return res.status(409).json({ error: "Today's request budget is spent. It resets at midnight UTC." });
   }
 
-  const result = await tick({ slice: max, job, season });
+  const result = await tick({ slice: max, job });
   res.json({ result, budget: budgetStatus(), lastRun: lastRun() });
-});
-
-/**
- * The seed rows the provider never gave us.
- *
- * seedStatus counts these and the screen showed only the resolved total, so the names were
- * invisible outside a SQL client. They are the only thing you can act on: a competition that
- * came back "no match" is either genuinely not carried, or is carried under a name the
- * matcher did not recognise, and telling those apart needs the name in front of you. Pair
- * this with the free re-match and an alias edit is a loop you can close on one screen.
- *
- * Pending and missing are kept apart. Pending means seeding has not reached it yet and will;
- * missing means it has been looked for and finalised, and only an alias will change it.
- */
-adminRouter.get('/catalog', (_req, res) => {
-  const rows = (table, extra) =>
-    all(
-      `SELECT id, seed_name, name, resolved, ${extra} FROM ${table}
-        WHERE is_seed = 1 AND resolved <> 1
-        ORDER BY resolved, seed_name`,
-    ).map((r) => ({
-      id: r.id,
-      name: r.seed_name || r.name,
-      where: r.country_name || r.country_hint || r.country_code || '',
-      status: r.resolved === -1 ? 'missing' : 'pending',
-    }));
-
-  res.json({
-    competitions: rows('competitions', 'country_hint, country_name'),
-    teams: rows('teams', 'country_code'),
-  });
-});
-
-/**
- * Who the rotation reaches next, and a way to change that.
- *
- * The queue is least-recently-synced first, so a competition just added, or one whose
- * fixtures look wrong, can be waiting two days for its turn. Clearing its cursor puts it at
- * the head of the queue. It spends nothing by itself: the next run pays for it as it would
- * have paid anyway, only sooner.
- */
-adminRouter.get('/rotation', (_req, res) => {
-  // rotationQueue selects whole competition rows for the sync to work with. The screen
-  // needs a name and a date, so only those cross the wire.
-  const queue = rotationQueue()
-    .slice(0, 8)
-    .map((c) => ({
-      id: c.id,
-      name: c.display_name || c.name,
-      country: c.country_name || c.country_code || '',
-      lastSyncedAt: c.last_full_sync_at,
-      season: c.provider_season,
-      partial: c.sync_cursor > 0,
-    }));
-  res.json({ queue });
-});
-
-adminRouter.post('/rotation/:id/next', (req, res) => {
-  const id = Number(req.params.id);
-  const comp = get('SELECT id, display_name, name FROM competitions WHERE id = ?', id);
-  if (!comp) return res.status(404).json({ error: 'No such competition' });
-
-  run('UPDATE competitions SET last_full_sync_at = NULL, sync_cursor = 0 WHERE id = ?', id);
-  res.json({ ok: true, competition: comp.display_name || comp.name });
-});
-
-/**
- * The jobs that cost nothing.
- *
- * None of these touch the provider, so none of them are guarded by the budget and none can
- * fail halfway and leave a bill. They already run on their own - the data jobs on every
- * boot, the prune on an hourly timer - and what was missing was a way to run one when you
- * have just changed something and want to see it take effect.
- *
- * The counts come back because "it worked" and "it changed nothing" look identical
- * otherwise, and with idempotent jobs the second is the normal answer.
- */
-const MAINTENANCE = {
-  // Re-applies popularity ranks, drops pre-floor fixtures, re-stamps seasons, reunites
-  // teams the provider split. What every boot does.
-  data: () => runMaintenance(),
-  // Re-matches unresolved seed rows against the cached provider catalog. No network: the
-  // catalog is already mirrored locally, which is what makes an alias edit free to retry.
-  catalog: () => matchCompetitions({ finalize: false }),
-  // Expired sessions and spent codes.
-  prune: () => ({ sessions: pruneSessions(), codes: pruneCodes() }),
-};
-
-adminRouter.post('/maintenance', (req, res) => {
-  const job = req.body?.job;
-  if (!Object.hasOwn(MAINTENANCE, job)) {
-    return res.status(400).json({ error: 'No such maintenance job.' });
-  }
-  res.json({ ok: true, job, result: MAINTENANCE[job]() });
 });
 
 /** Signs a user out everywhere. Their next visit needs a fresh code. */

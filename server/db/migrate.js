@@ -162,11 +162,9 @@ function mergeSplitTeams() {
  *
  * All four are local, free and idempotent, which is why they run on every boot rather than
  * once behind a version number: stating an invariant somewhere it gets re-checked beats a
- * one-shot migration. Exported so the admin screen runs exactly the same code on demand,
- * which is the point of editing popularity.js or an alias and wanting it to take effect
- * without a restart.
+ * one-shot migration.
  */
-export function runMaintenance() {
+function runMaintenance() {
   return {
     ranked: applyPopularity(),
     purged: purgeBelowFloor(),

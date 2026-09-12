@@ -11,56 +11,6 @@ import { Eyebrow, EmptyNote, SectionHeading, Spinner } from './layout.jsx';
  * here, behind ADMIN_EMAILS.
  */
 
-const JOBS = [
-  ['auto', 'Auto', 'Seeding if unfinished, otherwise scores then rotation.'],
-  ['sync', 'Fixtures', 'Refresh recent scores, then advance the season rotation. Scores get half the run.'],
-  ['scores', 'Scores', 'Only re-pull matches that kicked off recently and are not final yet.'],
-  ['rotation', 'Rotation', 'Only advance the season rotation, least recently synced competition first.'],
-  ['seed', 'Catalog', 'Resolve any teams and competitions still pending.'],
-];
-
-/** The rotation is the only lane a season applies to, so the field only appears for those. */
-const TAKES_SEASON = new Set(['auto', 'sync', 'rotation']);
-
-const CAPS = [2, 6, 12, 25];
-
-/**
- * The jobs that spend nothing.
- *
- * Separated from the sync pills on purpose: those cost provider requests out of a budget of
- * 85 a day, these cost none at all, and a control that might spend money should not sit in
- * the same row as one that cannot.
- */
-const CHORES = [
-  ['data', 'Data', 'Re-apply popularity ranks, drop pre-floor fixtures, re-stamp seasons, reunite split teams.'],
-  ['catalog', 'Re-match catalog', 'Match unresolved seed rows against the cached provider catalog. No requests.'],
-  ['prune', 'Prune', 'Clear expired sessions and spent codes.'],
-];
-
-/** Counts, as a sentence. Every job here is idempotent, so "nothing" is the usual answer. */
-function choreSummary(job, r) {
-  const bits =
-    job === 'data'
-      ? [
-          [r.ranked, 'rank', 'ranks'],
-          [r.purged, 'fixture dropped', 'fixtures dropped'],
-          [r.restamped, 'season re-stamped', 'seasons re-stamped'],
-          [r.merged, 'team merged', 'teams merged'],
-        ]
-      : job === 'catalog'
-        ? [[r.resolved, 'competition matched', 'competitions matched']]
-        : [
-            [r.sessions, 'session', 'sessions'],
-            [r.codes, 'code', 'codes'],
-          ];
-
-  const said = bits.filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
-  if (said.length) return said.join(' · ');
-  return job === 'catalog' && r.unresolved
-    ? `nothing matched, ${r.unresolved} still unresolved`
-    : 'nothing to change';
-}
-
 /** "1 request", not "1 requests". */
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -89,30 +39,15 @@ export function AdminScreen({ onClose, onFlash }) {
   const [users, setUsers] = useState(null);
   const [error, setError] = useState('');
 
-  const [job, setJob] = useState('auto');
-  const [chore, setChore] = useState('data');
-  const [choring, setChoring] = useState(false);
-  const [cap, setCap] = useState(6);
-  const [season, setSeason] = useState('');
-  const [rotation, setRotation] = useState(null);
-  const [catalog, setCatalog] = useState(null);
   const [running, setRunning] = useState(false);
   const [confirming, setConfirming] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const [s, o, u, r, c] = await Promise.all([
-        api.syncStatus(),
-        api.adminOverview(),
-        api.adminUsers(),
-        api.adminRotation(),
-        api.adminCatalog(),
-      ]);
+      const [s, o, u] = await Promise.all([api.syncStatus(), api.adminOverview(), api.adminUsers()]);
       setStatus(s);
       setOverview(o);
       setUsers(u);
-      setRotation(r);
-      setCatalog(c);
       setError('');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load the admin data.');
@@ -123,20 +58,10 @@ export function AdminScreen({ onClose, onFlash }) {
     load();
   }, [load]);
 
-  const syncNext = async (comp) => {
-    try {
-      await api.syncNext(comp.id);
-      onFlash(`${comp.name} goes next`, 'accent');
-      await load();
-    } catch (err) {
-      onFlash(err instanceof ApiError ? err.message : 'Could not reorder that.', 'negative');
-    }
-  };
-
   const runNow = async () => {
     setRunning(true);
     try {
-      const res = await api.runSync(job, cap, season.trim() || undefined);
+      const res = await api.runSync();
       const spent = res.result?.spent ?? 0;
       onFlash(
         res.result?.skipped
@@ -149,19 +74,6 @@ export function AdminScreen({ onClose, onFlash }) {
       onFlash(err instanceof ApiError ? err.message : 'Could not start the sync.', 'negative');
     } finally {
       setRunning(false);
-    }
-  };
-
-  const runChore = async () => {
-    setChoring(true);
-    try {
-      const res = await api.runMaintenance(chore);
-      onFlash(choreSummary(chore, res.result), 'accent');
-      await load();
-    } catch (err) {
-      onFlash(err instanceof ApiError ? err.message : 'Could not run that.', 'negative');
-    } finally {
-      setChoring(false);
     }
   };
 
@@ -186,17 +98,7 @@ export function AdminScreen({ onClose, onFlash }) {
     }
   };
 
-  const unresolvedCount = (catalog?.competitions?.length ?? 0) + (catalog?.teams?.length ?? 0);
-  const seedTotal = status
-    ? status.seed.competitions.resolved
-      + status.seed.competitions.pending
-      + status.seed.competitions.missing
-      + status.seed.teams.resolved
-      + status.seed.teams.pending
-      + status.seed.teams.missing
-    : 0;
-
-  const ready = status && overview && users && catalog;
+  const ready = status && overview && users;
 
   return (
     <div>
@@ -305,92 +207,16 @@ export function AdminScreen({ onClose, onFlash }) {
               <Line label="Currently running" value={status.schedule.running ? 'yes' : 'no'} />
             </div>
 
-            <Eyebrow>Run now</Eyebrow>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
-              {JOBS.map(([id, text, hint]) => (
-                <button
-                  key={id}
-                  type="button"
-                  title={hint}
-                  onClick={() => setJob(id)}
-                  aria-pressed={job === id}
-                  className="ws-tap"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '7px 12px',
-                    borderRadius: 9,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: job === id ? 'var(--accent)' : 'var(--card2)',
-                    color: job === id ? 'var(--accent-ink)' : 'var(--fg)',
-                    border: `1px solid ${job === id ? 'var(--accent)' : 'var(--line)'}`,
-                  }}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--dim)', marginBottom: 12 }}>
-              {JOBS.find(([id]) => id === job)?.[2]}
-            </div>
-
-            {TAKES_SEASON.has(job) && (
-              <>
-                <Eyebrow>Season</Eyebrow>
-                <input
-                  className="ws-field"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={season}
-                  onChange={(e) => setSeason(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="the season being played"
-                  aria-label="Season to pull instead of the current one"
-                  style={{ marginBottom: 12, maxWidth: 260 }}
-                />
-              </>
-            )}
-
-            <Eyebrow>Spend at most</Eyebrow>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-              {CAPS.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setCap(n)}
-                  aria-pressed={cap === n}
-                  className="ws-cap ws-tap"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '7px 10px',
-                    borderRadius: 9,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    fontVariantNumeric: 'tabular-nums',
-                    background: cap === n ? 'var(--card2)' : 'transparent',
-                    color: cap === n ? 'var(--accent-txt)' : 'var(--dim)',
-                    border: `1px solid ${cap === n ? 'var(--line2)' : 'var(--line)'}`,
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={runNow}
-                disabled={running || status.budget.remaining < 1}
-                className="ws-primary ws-run-sync ws-tap"
-                style={{ padding: '10px 16px', fontSize: 14 }}
-              >
-                <i className={running ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-play'} />
-                {running ? 'Running…' : 'Run sync'}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={runNow}
+              disabled={running || status.budget.remaining < 1}
+              className="ws-primary ws-run-sync ws-tap"
+              style={{ padding: '10px 16px', fontSize: 14 }}
+            >
+              <i className={running ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-play'} />
+              {running ? 'Running…' : 'Run sync'}
+            </button>
             {status.budget.remaining < 1 && (
               <div style={{ fontSize: 12.5, color: 'var(--warn)', marginTop: 10 }}>
                 Today&apos;s budget is spent. It resets at midnight UTC.
@@ -423,137 +249,6 @@ export function AdminScreen({ onClose, onFlash }) {
             />
             {status.fixtures.earliest && (
               <Line label="Covering" value={`${status.fixtures.earliest} → ${status.fixtures.latest}`} />
-            )}
-          </div>
-
-          <SectionHeading
-            title="Up next"
-            sub="The rotation works least recently synced first. Sending one to the front costs nothing by itself."
-            meta={rotation?.queue?.length ? `${rotation.queue.length} shown` : undefined}
-          />
-          <div data-anim="row" className="ws-card" style={{ padding: 16, marginBottom: 26 }}>
-            {!rotation?.queue?.length && <EmptyNote>No competitions are in the rotation yet.</EmptyNote>}
-            {rotation?.queue?.map((c, i) => (
-              <div
-                key={c.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                  padding: '9px 0',
-                  borderTop: i ? '1px solid var(--line)' : 'none',
-                }}
-              >
-                <div style={{ minWidth: 0, flex: '1 1 160px' }}>
-                  <div
-                    style={{
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {c.name}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--dim2)' }}>
-                    {c.lastSyncedAt ? `last pulled ${ago(c.lastSyncedAt)}` : 'never pulled'}
-                    {c.partial ? ' · part way through' : ''}
-                    {c.season ? ` · ${c.season}` : ''}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="ws-quiet ws-tap"
-                  onClick={() => syncNext(c)}
-                  disabled={i === 0}
-                  style={{ fontSize: 12.5, padding: '6px 10px' }}
-                >
-                  {i === 0 ? 'next already' : 'send to front'}
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <SectionHeading
-            title="Maintenance"
-            sub="Local jobs that cost no provider requests. Safe to run at any time, and again."
-            meta="free"
-          />
-          <div data-anim="row" className="ws-card" style={{ padding: 16, marginBottom: 26 }}>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 10 }}>
-              {CHORES.map(([id, text, hint]) => (
-                <button
-                  key={id}
-                  type="button"
-                  title={hint}
-                  onClick={() => setChore(id)}
-                  aria-pressed={chore === id}
-                  className="ws-tap"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '7px 12px',
-                    borderRadius: 9,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    background: chore === id ? 'var(--accent)' : 'var(--card2)',
-                    color: chore === id ? 'var(--accent-ink)' : 'var(--fg)',
-                    border: `1px solid ${chore === id ? 'var(--accent)' : 'var(--line)'}`,
-                  }}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ fontSize: 12.5, color: 'var(--dim)', marginBottom: 14, lineHeight: 1.5 }}>
-              {CHORES.find(([id]) => id === chore)?.[2]}
-            </div>
-
-            <button
-              type="button"
-              onClick={runChore}
-              disabled={choring}
-              className="ws-primary ws-run-sync ws-tap"
-              style={{ padding: '10px 16px', fontSize: 14 }}
-            >
-              <i className={choring ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-wrench'} />
-              {choring ? 'Running…' : 'Run'}
-            </button>
-          </div>
-
-          <SectionHeading
-            title="Unresolved"
-            sub="Seed entries the provider did not return. Fix an alias in seedData.js, then re-match above."
-            meta={unresolvedCount ? `${unresolvedCount} of ${seedTotal}` : 'all resolved'}
-          />
-          <div data-anim="row" className="ws-card" style={{ padding: 16, marginBottom: 26 }}>
-            {!unresolvedCount && (
-              <EmptyNote>Everything in the seed list resolved. Nothing to do here.</EmptyNote>
-            )}
-            {!!catalog?.competitions?.length && (
-              <>
-                <Eyebrow>Competitions</Eyebrow>
-                <div style={{ marginBottom: catalog.teams.length ? 16 : 0 }}>
-                  {catalog.competitions.map((c) => (
-                    <Unresolved key={`c${c.id}`} row={c} />
-                  ))}
-                </div>
-              </>
-            )}
-            {!!catalog?.teams?.length && (
-              <>
-                <Eyebrow>Teams</Eyebrow>
-                <div>
-                  {catalog.teams.map((t) => (
-                    <Unresolved key={`t${t.id}`} row={t} />
-                  ))}
-                </div>
-              </>
             )}
           </div>
 
@@ -687,38 +382,6 @@ export function AdminScreen({ onClose, onFlash }) {
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-/**
- * One entry that did not resolve. "missing" has been looked for and finalised, so only an
- * alias will move it; "pending" has simply not been reached yet.
- */
-function Unresolved({ row }) {
-  const missing = row.status === 'missing';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '5px 0' }}>
-      <div style={{ fontSize: 13.5, minWidth: 0, flex: '1 1 140px' }}>
-        {row.name}
-        {row.where && <span style={{ color: 'var(--dim2)' }}> · {row.where}</span>}
-      </div>
-      <span
-        style={{
-          flex: 'none',
-          fontSize: 10.5,
-          fontWeight: 700,
-          letterSpacing: '.06em',
-          textTransform: 'uppercase',
-          padding: '3px 8px',
-          borderRadius: 7,
-          color: missing ? 'var(--dim)' : 'var(--accent-txt)',
-          background: 'var(--card2)',
-          border: '1px solid var(--line)',
-        }}
-      >
-        {missing ? 'no match' : 'pending'}
-      </span>
     </div>
   );
 }

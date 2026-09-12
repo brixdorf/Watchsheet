@@ -284,37 +284,6 @@ export async function syncRotation({ maxRequests = Infinity, season = null, log 
  */
 const refreshShare = (max) => (Number.isFinite(max) ? Math.max(1, Math.ceil(max / 2)) : max);
 
-/**
- * One lane, in the shape `runSync` returns.
- *
- * The lane functions throw BudgetExhaustedError and leave the catching to their caller,
- * which is right for them and wrong for anything that calls one directly: running out of
- * budget is a normal outcome that saves its progress, not a failure. This is where that
- * gets turned back into a result, so a caller cannot accidentally turn a budget stop into
- * an error.
- */
-async function runLane(key, fn) {
-  let stoppedForBudget = false;
-  let outcome = null;
-  try {
-    outcome = await fn();
-  } catch (err) {
-    if (!(err instanceof BudgetExhaustedError)) throw err;
-    stoppedForBudget = true;
-  }
-  return { spent: outcome?.spent ?? 0, stoppedForBudget, [key]: outcome };
-}
-
-/** Scores only: matches that kicked off recently and are not final yet. */
-export function runScores({ maxRequests = Infinity, log = () => {} } = {}) {
-  return runLane('refresh', () => refreshRecent({ maxRequests, log }));
-}
-
-/** Rotation only: the next competitions due a full season pull. */
-export function runRotation({ maxRequests = Infinity, season = null, log = () => {} } = {}) {
-  return runLane('rotation', () => syncRotation({ maxRequests, season, log }));
-}
-
 /** Runs both lanes within `maxRequests`, refresh first. */
 export async function runSync({ maxRequests = Infinity, season = null, log = () => {} } = {}) {
   let spent = 0;

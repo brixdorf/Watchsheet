@@ -79,12 +79,7 @@ export const api = {
   syncStatus: () => request('/admin/sync'),
   adminOverview: () => request('/admin/overview'),
   adminUsers: () => request('/admin/users'),
-  runSync: (job, max, season) =>
-    request('/admin/sync/run', { method: 'POST', body: { job, max, season } }),
-  adminRotation: () => request('/admin/rotation'),
-  adminCatalog: () => request('/admin/catalog'),
-  syncNext: (id) => request(`/admin/rotation/${id}/next`, { method: 'POST' }),
-  runMaintenance: (job) => request('/admin/maintenance', { method: 'POST', body: { job } }),
+  runSync: (job, max) => request('/admin/sync/run', { method: 'POST', body: { job, max } }),
   revokeSessions: (id) => request(`/admin/users/${id}/revoke`, { method: 'POST' }),
   deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 };

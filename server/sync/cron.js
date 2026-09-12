@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { config } from '../config.js';
 import { remaining } from './budget.js';
-import { runRotation, runScores, runSync } from './fixtures.js';
+import { runSync } from './fixtures.js';
 import { runSeed, seedStatus } from './seed.js';
 
 /**
@@ -19,17 +19,7 @@ let scheduled = false;
 
 export const lastRun = () => last;
 
-/**
- * What each job actually runs. 'auto' is the schedule's, and decides for itself; the rest
- * are the admin screen asking for one thing in particular.
- */
-const LANES = {
-  sync: (budget, season) => runSync({ maxRequests: budget, season }),
-  scores: (budget) => runScores({ maxRequests: budget }),
-  rotation: (budget, season) => runRotation({ maxRequests: budget, season }),
-};
-
-export async function tick({ slice = config.sync.slice, job = 'auto', season = null } = {}) {
+export async function tick({ slice = config.sync.slice, job = 'auto' } = {}) {
   if (running) return { skipped: 'already running' };
   if (!config.highlightly.apiKey) return { skipped: 'no API key' };
 
@@ -42,14 +32,13 @@ export async function tick({ slice = config.sync.slice, job = 'auto', season = n
     // 'auto' is what the schedule uses: finish seeding first, because the rotation has
     // no competitions to work through until it does.
     const seeding = job === 'seed' || (job === 'auto' && !seedStatus().complete);
-    const lane = seeding ? 'seed' : (LANES[job] ? job : 'sync');
     const result = seeding
       ? await runSeed({ maxRequests: budget })
-      : await LANES[lane](budget, season);
+      : await runSync({ maxRequests: budget });
 
     last = {
       at: startedAt,
-      job: lane,
+      job: seeding ? 'seed' : 'sync',
       spent: result.spent,
       stoppedForBudget: result.stoppedForBudget,
     };
