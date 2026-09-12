@@ -13,12 +13,13 @@ import { runSeed, seedStatus } from './seed.js';
  * resolved competitions and has nothing to work with until seeding finishes.
  */
 
-/** The cron fires at five past every hour. */
+/** Five past every hour, so a restart on the hour does not collide with the first tick. */
+const SCHEDULE = '5 * * * *';
 const TICKS_PER_DAY = 24;
 
 let last = null;
 let running = false;
-let scheduled = false;
+let task = null;
 
 export const lastRun = () => last;
 
@@ -57,13 +58,12 @@ export async function tick({ slice = config.sync.slice, job = 'auto' } = {}) {
 
 export const isRunning = () => running;
 
-/** When the next scheduled tick fires: five past the coming hour, or null if disabled. */
+/**
+ * When the next scheduled tick fires, or null if nothing is scheduled. Asked of the scheduler
+ * rather than worked out again here, so it cannot drift from SCHEDULE.
+ */
 export function nextRun() {
-  if (!scheduled) return null;
-  const next = new Date();
-  next.setMinutes(5, 0, 0);
-  if (next.getTime() <= Date.now()) next.setTime(next.getTime() + 3600000);
-  return next.getTime();
+  return task?.getNextRun()?.getTime() ?? null;
 }
 
 export function startCron() {
@@ -76,9 +76,7 @@ export function startCron() {
     return null;
   }
 
-  // Five past the hour, so a restart on the hour does not collide with the first tick.
-  scheduled = true;
-  const task = cron.schedule('5 * * * *', () => {
+  task = cron.schedule(SCHEDULE, () => {
     tick().then((r) => {
       if (r && !r.skipped) console.log(`Sync tick (${r.job}): ${r.spent ?? 0} requests`);
     });
