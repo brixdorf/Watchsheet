@@ -231,6 +231,8 @@ function statusLine(match) {
   if (match.status === 'live') return 'In progress';
   if (match.status === 'postponed') return 'Postponed';
   if (match.status === 'cancelled') return 'Cancelled';
-  if (match.homeScore == null) return 'No result recorded';
+  // Matches the card's "awaiting result": a finished match with no score is one the provider
+  // has not settled yet, not one without a result.
+  if (match.homeScore == null) return 'Awaiting result';
   return 'Full time';
 }
