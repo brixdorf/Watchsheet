@@ -123,10 +123,11 @@ matchesRouter.get('/search', (req, res) => {
     clauses.push('m.kickoff_utc < ?');
     params.push(Date.now());
   }
-  // Every word must appear somewhere, which is how the design's search behaved.
+  // Every word must appear somewhere, which is how the design's search behaved. The words are
+  // literal text, so LIKE's own wildcards are escaped: searching "_" used to match everything.
   for (const word of q.split(/\s+/).filter(Boolean).slice(0, 6)) {
-    clauses.push(`${HAYSTACK} LIKE ?`);
-    params.push(`%${word}%`);
+    clauses.push(`${HAYSTACK} LIKE ? ESCAPE '!'`);
+    params.push(`%${word.replace(/[!%_]/g, '!$&')}%`);
   }
 
   const limit = q || competitionId || season ? 60 : 24;
