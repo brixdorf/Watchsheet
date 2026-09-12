@@ -47,7 +47,7 @@ export const tzOffset = () => new Date().getTimezoneOffset();
 
 export const api = {
   me: () => request('/auth/me'),
-  requestCode: (email, name) => request('/auth/request-code', { method: 'POST', body: { email, name } }),
+  requestCode: (email) => request('/auth/request-code', { method: 'POST', body: { email } }),
   verifyCode: (email, code) => request('/auth/verify', { method: 'POST', body: { email, code } }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   updateProfile: (name) => request('/auth/me', { method: 'PATCH', body: { name } }),

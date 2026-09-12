@@ -5,7 +5,12 @@ import { isValidEmail } from '../lib/email.js';
 import { animateScreen } from '../lib/anim.js';
 
 /**
- * Sign-in: intro, then name and email, then the six-digit code.
+ * Sign-in: intro, then an email address, then the six-digit code.
+ *
+ * The name is deliberately not asked for here. It belongs to an account, and until a code
+ * comes back there is no account: asking first meant carrying the string through the OTP
+ * row just to reach the INSERT, and refusing a returning user who typed only their address.
+ * NameStep collects it once the account exists.
  *
  * The code is real (hashed server-side, rate limited, five attempts). Only delivery is
  * local until a mail provider is configured. When it is local the server hands the code
@@ -41,7 +46,6 @@ const card = {
 
 export function Onboarding({ onSignedIn }) {
   const [step, setStep] = useState(0);
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -78,11 +82,10 @@ export function Onboarding({ onSignedIn }) {
 
   const sendCode = async () => {
     setError('');
-    if (name.trim().length < 2) return setError('Pop your name in first.');
     if (!isValidEmail(email)) return setError('That email does not look right.');
     setBusy(true);
     try {
-      const res = await api.requestCode(email.trim(), name.trim());
+      const res = await api.requestCode(email.trim());
       setDevCode(res.devCode ?? null);
       setCode('');
       const cooldown = res.resendInMs != null ? res.resendInMs / 1000 : undefined;
@@ -105,7 +108,7 @@ export function Onboarding({ onSignedIn }) {
     setBusy(true);
     setError('');
     try {
-      const res = await api.requestCode(email.trim(), name.trim());
+      const res = await api.requestCode(email.trim());
       setDevCode(res.devCode ?? null);
       setCode('');
       const cooldown = res.resendInMs != null ? res.resendInMs / 1000 : undefined;
@@ -220,18 +223,6 @@ export function Onboarding({ onSignedIn }) {
             <div style={{ color: 'var(--dim)', fontSize: 13.5, marginBottom: 20 }}>
               No password. We'll email you a six-digit code.
             </div>
-
-            <label htmlFor="ws-name" style={label}>Name</label>
-            <input
-              id="ws-name"
-              className="ws-field"
-              type="text"
-              autoComplete="name"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(''); }}
-              placeholder="Sam Okoye"
-              style={{ marginBottom: 16 }}
-            />
 
             <label htmlFor="ws-email" style={label}>Email</label>
             <input

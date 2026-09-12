@@ -58,20 +58,18 @@ authRouter.patch('/me', requireAuth, (req, res) => {
 
 authRouter.post('/request-code', async (req, res) => {
   const email = normalizeEmail(req.body?.email);
-  const name = String(req.body?.name ?? '').trim();
 
   if (!isValidEmail(email)) {
     return res.status(400).json({ error: 'That email does not look right.' });
   }
-  // An existing account already has a name, so only new sign-ups need to supply one.
+  // Signing in needs an address and nothing else. A returning account already has a name,
+  // which is looked up here only so the mail can greet them by it; a new one is named
+  // after the code is verified, once there is a row to put the name on.
   const existing = get('SELECT id, name FROM users WHERE email = ?', email);
-  if (!existing && name.length < 2) {
-    return res.status(400).json({ error: 'Pop your name in first.' });
-  }
 
   let issued;
   try {
-    issued = issueCode(email, name || existing?.name, clientIp(req));
+    issued = issueCode(email, existing?.name, clientIp(req));
   } catch (err) {
     if (err instanceof CooldownError) {
       return res
@@ -84,7 +82,7 @@ authRouter.post('/request-code', async (req, res) => {
   try {
     await mailProvider().sendOtp({
       to: email,
-      name: name || existing?.name,
+      name: existing?.name,
       code: issued.code,
       expiresAt: issued.expiresAt,
       codeId: issued.codeId,
