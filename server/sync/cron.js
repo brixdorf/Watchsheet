@@ -13,6 +13,9 @@ import { runSeed, seedStatus } from './seed.js';
  * resolved competitions and has nothing to work with until seeding finishes.
  */
 
+/** The cron fires at five past every hour. */
+const TICKS_PER_DAY = 24;
+
 let last = null;
 let running = false;
 let scheduled = false;
@@ -80,6 +83,20 @@ export function startCron() {
       if (r && !r.skipped) console.log(`Sync tick (${r.job}): ${r.spent ?? 0} requests`);
     });
   });
-  console.log(`Sync cron scheduled hourly, ${config.sync.slice} requests per tick.`);
+  // The tick size and the daily budget come from separate env vars and nothing compared
+  // them, which is how the schedule came to ask for 144 requests a day against an allowance
+  // of 85. It never overspent, because the budget guard is the hard stop, but the day ran
+  // out around lunchtime and evening kick-offs went unrefreshed. Cheaper to notice here.
+  const daily = TICKS_PER_DAY * config.sync.slice;
+  if (daily > config.highlightly.dailyBudget) {
+    console.warn(
+      `Sync would ask for ${daily} requests a day (${TICKS_PER_DAY} ticks x ${config.sync.slice}) `
+        + `against a budget of ${config.highlightly.dailyBudget}. The guard will cut the day short; `
+        + `lower SYNC_SLICE to ${Math.floor(config.highlightly.dailyBudget / TICKS_PER_DAY)} or less.`,
+    );
+  }
+  console.log(
+    `Sync cron scheduled hourly, ${config.sync.slice} requests per tick, up to ${daily} a day.`,
+  );
   return task;
 }

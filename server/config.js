@@ -39,7 +39,10 @@ export const config = {
 
   sync: {
     enabled: bool(process.env.SYNC_ENABLED, true),
-    slice: num(process.env.SYNC_SLICE, 6),
+    // Requests per hourly tick, so the day's ceiling is 24 times this. It has to stay under
+    // the daily budget above, or the schedule simply stops part way through the afternoon
+    // when the guard runs out, which is the wrong half of the day to lose.
+    slice: num(process.env.SYNC_SLICE, 3),
   },
 
   mail: {

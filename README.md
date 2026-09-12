@@ -102,8 +102,14 @@ two lanes:
   requests where fixtures actually exist, typically a handful even on a busy weekend.
 
 Refresh runs first each tick because it is small and time-sensitive. A cron fires hourly and
-spends at most `SYNC_SLICE` requests, so the schedule cannot outrun the daily budget however
-often it fires.
+spends at most `SYNC_SLICE` requests, so the budget guard is never the thing that stops a
+run: **24 x `SYNC_SLICE` has to sit under `HIGHLIGHTLY_DAILY_BUDGET`**, and the server says so
+at boot if it does not. It defaults to 3, which is 72 a day against a budget of 85.
+
+The guard would catch an overspend either way, but it is the wrong safety net to rely on. A
+schedule asking for more than the day holds does not overspend, it stops early: the allowance
+goes by mid-afternoon and the evening's kick-offs, the ones with scores worth refreshing, get
+nothing.
 
 ## The catalog
 
@@ -234,24 +240,8 @@ It holds the things that are nobody else's business or nobody else's to act on:
   reports. This used to be visible to every signed-in user, which put an account-wide
   resource in front of people who could do nothing about it.
 - **The sync schedule**, and a button that runs it now: the same job the cron runs, under
-  the same budget guard, with a per-run ceiling so a mis-click cannot spend the day. Choose
-  the lane and the ceiling; no shell on the server needed. The lanes are the ones the code
-  already had: `auto`, both fixture lanes together, scores on their own, the rotation on its
-  own, and the catalog seed. The rotation also takes a season, which the CLI has always
-  accepted and the screen did not.
-- **Up next**: who the rotation reaches first. It works least recently synced first, so a
-  competition can be a couple of days from its turn; clearing its cursor moves it to the
-  front and spends nothing by itself, since the next run pays for it as it would have
-  anyway.
-- **Maintenance**, the jobs that cost no provider requests. The four data jobs that run on
-  every boot (popularity ranks, the pre-floor purge, the season re-stamp, the split-team
-  merge), the local catalog re-match, and the session and code prunes that otherwise only
-  run on an hourly timer. Each reports what it changed, because with an idempotent job
-  "it worked" and "it changed nothing" look identical otherwise.
-- **Unresolved**: the seed entries the provider did not return, by name. Paired with the
-  re-match above, editing an alias in `seedData.js` and checking the result is a loop you
-  can close without leaving the screen. Pending and missing are kept apart: pending has not
-  been reached yet, missing has been looked for and finalised.
+  the same budget guard and the same per-run ceiling, so a mis-click cannot spend the day.
+  No shell on the server needed. What the seed resolved is listed under it.
 - **Accounts**: who has signed up, what they have logged, how many live sessions they hold
   and when those expire. Sessions can be revoked, and an account deleted with everything
   attached to it. Admin accounts are refused, so the button cannot lock you out.
