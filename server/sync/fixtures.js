@@ -142,6 +142,16 @@ function backoffMs(ageMs) {
  * a fixture the provider was slow to settle simply aged out of view and kept its null score
  * for good, which the UI then reported as "no result" on a match that had plainly finished.
  * Newest first, so a backlog never delays today's scores.
+ *
+ * The upper bound is now, not a few hours ahead. A fixture that has not started has no score
+ * to fetch, and the old six-hour lookahead spent a request every twenty minutes on each
+ * such pair through the afternoon; the rotation already carries any change to a kick-off.
+ *
+ * Postponed matches are left out too. The provider keeps a postponed fixture on its original
+ * date with the state "Postponed" indefinitely (Brasileirão ties from 29 July still read that
+ * way six weeks on), so asking again cannot change anything and, with the daily backoff, it
+ * cost a request per pair every day for good. The replayed fixture arrives through the
+ * rotation, under its new date.
  */
 export function staleRefreshTargets({ now = Date.now() } = {}) {
   const rows = all(
@@ -157,11 +167,11 @@ export function staleRefreshTargets({ now = Date.now() } = {}) {
       WHERE m.is_custom = 0
         AND c.provider_id IS NOT NULL
         AND m.kickoff_utc BETWEEN ? AND ?
-        AND m.status NOT IN ('finished', 'cancelled')
+        AND m.status NOT IN ('finished', 'cancelled', 'postponed')
       GROUP BY m.competition_id, day
       ORDER BY day DESC`,
     DATA_FLOOR_MS,
-    now + 6 * 3_600_000,
+    now,
   );
   // Fetching a pair rewrites every row in it, so the newest updated_at is when we last
   // asked. Filtered here rather than in SQL because the backoff reads as a rule, not a join.
