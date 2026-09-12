@@ -42,7 +42,8 @@ app.use('/api', (_req, res) => res.status(404).json({ error: 'No such endpoint' 
 if (config.isProd) {
   const dist = path.join(config.rootDir, 'web', 'dist');
   app.use(express.static(dist, { maxAge: '1h', index: false }));
-  app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+  // Express 5 names its wildcards; a bare '*' is no longer a valid path.
+  app.get('/{*splat}', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
 /**
