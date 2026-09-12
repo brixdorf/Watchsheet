@@ -87,7 +87,11 @@ exportRouter.get('/', (req, res) => {
   const tzName = String(req.query.tz ?? '').slice(0, 40);
 
   const records = toRecords(rowsFor(req.user.id, scope), { tzOffsetMin, tzName });
-  const stem = `watchsheet-${scope === 'all' ? 'all-time' : scope.replace('/', '-')}`;
+  // The scope comes straight off the query string and lands in a header, so it is reduced to
+  // letters, digits and dashes: a quote broke the filename, and CR/LF made Node refuse the
+  // header outright and the download answered 500.
+  const slug = scope === 'all' ? 'all-time' : scope.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const stem = `watchsheet-${slug || 'export'}`;
 
   if (format === 'JSON') {
     const body = JSON.stringify(
