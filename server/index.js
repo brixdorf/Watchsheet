@@ -51,7 +51,9 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(config.port, () => {
-  console.log(`Watchsheet API on http://localhost:${config.port} (${config.env})`);
+  // Every interface, not just loopback. In development the phone reaches the app through
+  // Vite, which proxies here, so this port is not the one to open in a browser.
+  console.log(`Watchsheet API listening on port ${config.port} (${config.env})`);
   startCron();
 });
 

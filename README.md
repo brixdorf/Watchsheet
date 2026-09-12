@@ -29,6 +29,30 @@ npm start                   # Express serves the API and the built app on :3000
 Requires Node 22 or newer: the database layer uses the built-in `node:sqlite` module, so
 there is no native build step and no compiler needed.
 
+### From your phone
+
+The dev server binds every interface, so `npm run dev` prints a **Network** URL alongside
+the local one. Open that on the phone; `ipconfig` confirms the address, which changes with
+the DHCP lease. Nothing else needs configuring: the client's only `fetch` is a relative
+`/api` path, so it resolves against whatever origin the page was loaded from and Vite
+proxies it to the API. Do not swap that for an absolute `http://<ip>:3000`, which would make
+every call cross-origin and drop the `sameSite=lax` session cookie.
+
+If the page times out, the network is the problem rather than the app. Shared building and
+campus WiFi commonly runs **client isolation**, which stops two devices on it talking to
+each other at all, and no amount of configuration gets round that. Two ways out:
+
+- **Turn on the phone's hotspot and join the laptop to it.** Nothing to install, nothing
+  published, and the phone owns the network so isolation is not in play. Try this first.
+- **Tunnel it**, if it needs to be reachable from off the network:
+  `cloudflared tunnel --url http://localhost:5173`. The `allowedHosts` entry in
+  `web/vite.config.js` is what lets the `*.trycloudflare.com` address through Vite's host
+  check. This puts the dev app on a public URL for as long as it runs, and hot reload may
+  not reconnect through it, though the app itself works.
+
+On Windows, the first run may raise a Defender prompt for Node. Allow it on the network
+you are on, or the port stays shut whatever the config says.
+
 ## Commands
 
 | Command | What it does |
