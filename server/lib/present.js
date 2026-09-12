@@ -87,10 +87,21 @@ export function shapeMatch(row) {
   };
 }
 
-/** Runs a query built on SELECT, injecting the user id for the log join and visibility. */
-export function queryMatches(userId, where, params = [], tail = '') {
+/**
+ * Runs a query built on SELECT, injecting the user id for the log join and visibility.
+ *
+ * `followedTeam` is stamped here rather than computed in SQL because the caller already
+ * knows: the feed asks for one half of the follow rule at a time, so the answer is whichever
+ * query the row came out of. Adding a correlated subquery to the SELECT list would mean more
+ * placeholders in a parameter order that is already positional and easy to get wrong.
+ */
+export function queryMatches(userId, where, params = [], tail = '', { followedTeam } = {}) {
   const sql = `${SELECT} WHERE ${VISIBLE}${where ? ` AND ${where}` : ''} ${tail}`;
-  return all(sql, userId, userId, ...params).map(shapeMatch);
+  return all(sql, userId, userId, ...params).map((row) => {
+    const match = shapeMatch(row);
+    if (followedTeam !== undefined) match.followedTeam = followedTeam;
+    return match;
+  });
 }
 
 export function findMatch(userId, matchId) {
@@ -108,13 +119,29 @@ export function followSets(userId) {
 }
 
 /**
- * SQL fragment limiting matches to the user's follows. Returned as a fragment rather than
- * applied in JS so the database does the filtering.
+ * What the user follows, as two SQL fragments rather than one.
+ *
+ * A follow is not one thing. Following Arsenal means you want their matches; following the
+ * Premier League means you will take the rest of it too. Treating both the same is how a
+ * feed of twelve, sorted only by kick-off time, fills with whatever happens to start next
+ * and leaves the sides you actually follow off the bottom of the card.
+ *
+ * The two are mutually exclusive and their union is every match the user follows, so a feed
+ * built from both in turn holds exactly what one combined clause would have held.
+ *
+ * Returned as fragments rather than applied in JS so the database does the filtering.
  */
-export function followedClause() {
+export function followedTeamClause() {
   return `(
-    m.competition_id IN (SELECT entity_id FROM follows WHERE user_id = ? AND kind = 'competition')
-    OR m.home_team_id IN (SELECT entity_id FROM follows WHERE user_id = ? AND kind = 'team')
+    m.home_team_id IN (SELECT entity_id FROM follows WHERE user_id = ? AND kind = 'team')
     OR m.away_team_id IN (SELECT entity_id FROM follows WHERE user_id = ? AND kind = 'team')
   )`;
 }
+
+export function followedCompOnlyClause() {
+  return `(
+    m.competition_id IN (SELECT entity_id FROM follows WHERE user_id = ? AND kind = 'competition')
+    AND NOT ${followedTeamClause()}
+  )`;
+}
+

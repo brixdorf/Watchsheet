@@ -1,6 +1,11 @@
 import express from 'express';
 import { all, get, run, tx } from '../db/index.js';
-import { followedClause, findMatch, queryMatches } from '../lib/present.js';
+import {
+  followedCompOnlyClause,
+  followedTeamClause,
+  findMatch,
+  queryMatches,
+} from '../lib/present.js';
 import { seasonIdFor, DATA_FLOOR_MS } from '../lib/season.js';
 import { requireAuth } from '../lib/session.js';
 
@@ -28,25 +33,57 @@ const HAYSTACK = `LOWER(
     WHEN '10' THEN 'oct october' WHEN '11' THEN 'nov november' ELSE 'dec december' END
 )`;
 
-/* Home feed: what the user follows, split into what is coming and what just happened. */
+/**
+ * Home feed: what the user follows, split into what is coming and what just happened, and
+ * within each, the sides they follow ahead of everything else.
+ *
+ * Each half is two queries rather than one. Sorting a single result set would not do it:
+ * the cut to a card's worth happens in SQL, so a match the user actually cares about is not
+ * ranked low, it is never fetched. With one list of twelve by kick-off time, a Saturday of
+ * league football fills every slot before a followed side takes the pitch.
+ *
+ * Teams are asked for first and the rest of the card goes to their competitions, so an
+ * account following two clubs still gets a full feed instead of a short one.
+ */
+const TEAM_SLOTS = 8;
+const TOTAL_SLOTS = 14;
+
 matchesRouter.get('/feed', (req, res) => {
   const uid = req.user.id;
   const now = Date.now();
-  const followed = followedClause();
+  const teamOnly = followedTeamClause();
+  const compOnly = followedCompOnlyClause();
 
-  const upcoming = queryMatches(
-    uid,
-    `${followed} AND m.kickoff_utc >= ? AND m.status NOT IN ('cancelled')`,
-    [uid, uid, uid, now - 3 * 3_600_000],
-    'ORDER BY m.kickoff_utc ASC LIMIT 12',
+  // followedTeamClause takes two user ids, followedCompOnlyClause three: one for the
+  // competition test and two for the team test it negates.
+  const section = (window, windowParams, order) => {
+    const teams = queryMatches(
+      uid,
+      `${teamOnly} AND ${window}`,
+      [uid, uid, ...windowParams],
+      `${order} LIMIT ${TEAM_SLOTS}`,
+      { followedTeam: true },
+    );
+    const room = TOTAL_SLOTS - teams.length;
+    const others = room > 0
+      ? queryMatches(
+        uid,
+        `${compOnly} AND ${window}`,
+        [uid, uid, uid, ...windowParams],
+        `${order} LIMIT ${room}`,
+        { followedTeam: false },
+      )
+      : [];
+    return teams.concat(others);
+  };
+
+  const upcoming = section(
+    `m.kickoff_utc >= ? AND m.status NOT IN ('cancelled')`,
+    [now - 3 * 3_600_000],
+    'ORDER BY m.kickoff_utc ASC',
   );
 
-  const recent = queryMatches(
-    uid,
-    `${followed} AND m.kickoff_utc < ?`,
-    [uid, uid, uid, now],
-    'ORDER BY m.kickoff_utc DESC LIMIT 12',
-  );
+  const recent = section('m.kickoff_utc < ?', [now], 'ORDER BY m.kickoff_utc DESC');
 
   const followCount = get(
     'SELECT COUNT(*) AS n FROM follows WHERE user_id = ?',
