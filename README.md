@@ -183,7 +183,11 @@ it was played; the floor is about seeded provider data.
 ## Email codes
 
 Sign-in is a six-digit code, hashed at rest, valid for ten minutes, with a 30-second resend
-cooldown and a five-attempt ceiling, all enforced server-side.
+cooldown and a five-attempt ceiling, all enforced server-side. The only thing asked for is
+an address: a name belongs to an account, and until the code comes back there is no
+account. A new one is created unnamed and the first screen after the code asks what to
+call you, which is also why nothing records whether that step was taken. An account with no
+name is owed it, exactly as an account with no follows is owed the picker.
 
 Delivery is a swappable seam. `MAIL_PROVIDER=console` (the default) prints the code to the
 server output and, with `OTP_DEV_ECHO=true`, shows it on the verify screen, so the flow is
@@ -231,7 +235,23 @@ It holds the things that are nobody else's business or nobody else's to act on:
   resource in front of people who could do nothing about it.
 - **The sync schedule**, and a button that runs it now: the same job the cron runs, under
   the same budget guard, with a per-run ceiling so a mis-click cannot spend the day. Choose
-  the lane (auto, fixtures, catalog) and the ceiling; no shell on the server needed.
+  the lane and the ceiling; no shell on the server needed. The lanes are the ones the code
+  already had: `auto`, both fixture lanes together, scores on their own, the rotation on its
+  own, and the catalog seed. The rotation also takes a season, which the CLI has always
+  accepted and the screen did not.
+- **Up next**: who the rotation reaches first. It works least recently synced first, so a
+  competition can be a couple of days from its turn; clearing its cursor moves it to the
+  front and spends nothing by itself, since the next run pays for it as it would have
+  anyway.
+- **Maintenance**, the jobs that cost no provider requests. The four data jobs that run on
+  every boot (popularity ranks, the pre-floor purge, the season re-stamp, the split-team
+  merge), the local catalog re-match, and the session and code prunes that otherwise only
+  run on an hourly timer. Each reports what it changed, because with an idempotent job
+  "it worked" and "it changed nothing" look identical otherwise.
+- **Unresolved**: the seed entries the provider did not return, by name. Paired with the
+  re-match above, editing an alias in `seedData.js` and checking the result is a loop you
+  can close without leaving the screen. Pending and missing are kept apart: pending has not
+  been reached yet, missing has been looked for and finalised.
 - **Accounts**: who has signed up, what they have logged, how many live sessions they hold
   and when those expire. Sessions can be revoked, and an account deleted with everything
   attached to it. Admin accounts are refused, so the button cannot lock you out.
