@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { remaining, usageFor } from './budget.js';
 import { AuthError } from './client.js';
 import { runSync } from './fixtures.js';
-import { runAuto } from './auto.js';
+import { firstSyncPending, runAuto } from './auto.js';
 import { runSeed } from './seed.js';
 
 /**
@@ -17,6 +17,18 @@ import { runSeed } from './seed.js';
 /** Five past every hour, so a restart on the hour does not collide with the first tick. */
 const SCHEDULE = '5 * * * *';
 const TICKS_PER_DAY = 24;
+
+// Per tick while a new install is still on its first sync, the same ceiling as a manual run.
+// About seventy requests bring in everything, which at SYNC_SLICE's 3 would take a day and at
+// this takes three or four ticks. The daily budget still stops it, so it cannot overspend.
+const FIRST_SYNC_SLICE = 25;
+
+function scheduledTick() {
+  const slice = firstSyncPending() ? FIRST_SYNC_SLICE : config.sync.slice;
+  tick({ slice }).then((r) => {
+    if (r && !r.skipped) console.log(`Sync tick (${r.job}): ${r.spent ?? 0} requests`);
+  });
+}
 
 let last = null;
 let running = false;
@@ -91,11 +103,7 @@ export function startCron() {
     return null;
   }
 
-  task = cron.schedule(SCHEDULE, () => {
-    tick().then((r) => {
-      if (r && !r.skipped) console.log(`Sync tick (${r.job}): ${r.spent ?? 0} requests`);
-    });
-  });
+  task = cron.schedule(SCHEDULE, scheduledTick);
   // The tick size and the daily budget come from separate env vars and nothing compared
   // them, which is how the schedule came to ask for 144 requests a day against an allowance
   // of 85. It never overspent, because the budget guard is the hard stop, but the day ran
@@ -111,5 +119,13 @@ export function startCron() {
   console.log(
     `Sync cron scheduled hourly, ${config.sync.slice} requests per tick, up to ${daily} a day.`,
   );
+
+  // A new install has no teams, competitions or fixtures until its first sync, and the first
+  // scheduled tick can be most of an hour away. A fresh deploy should not open onto an empty
+  // app, so start straight away. Every run resumes, so a restart part-way loses nothing.
+  if (firstSyncPending()) {
+    console.log('New install: starting the first sync now rather than at the next hourly tick.');
+    setTimeout(scheduledTick, 3_000);
+  }
   return task;
 }

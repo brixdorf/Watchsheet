@@ -71,8 +71,9 @@ npm run dev             # API on :3000, app on http://localhost:5173
 Without a Resend key, sign-in codes are printed to the server output and shown on the
 sign-in screen, so the whole flow works locally with no mail setup.
 
-Skip that step and the hourly sync, or the sync button on the admin screen, does the same
-work in smaller runs.
+Skip that step and the server starts the first sync by itself a few seconds after it boots,
+then continues at up to 25 requests an hour until every competition has its fixtures. A new
+deploy fills itself the same way.
 
 ## Configuration
 
