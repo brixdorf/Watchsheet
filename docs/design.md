@@ -1,4 +1,6 @@
-# Watchsheet
+# Watchsheet design notes
+
+How Watchsheet works and why, in more depth than the [README](../README.md).
 
 A private logbook for football. One tap to mark a match watched. Notes and a 1–5 rating
 only if you feel like it. Follow teams and competitions, add custom matches for anything
