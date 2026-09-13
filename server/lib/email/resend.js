@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Resend } from 'resend';
 import { config } from '../../config.js';
@@ -83,10 +84,14 @@ export const resendProvider = {
     };
     if (config.mail.replyTo) message.replyTo = config.mail.replyTo;
 
-    // One key per issued code, so the retry below cannot deliver a second copy. It belongs
-    // in the send options rather than the message: the SDK whitelists the message fields it
-    // forwards, and reads this one only from the second argument.
-    const options = codeId ? { idempotencyKey: `signin-code/${codeId}` } : {};
+    // One key per send, so the retry below cannot deliver a second copy. It belongs in the send
+    // options rather than the message: the SDK whitelists the message fields it forwards, and
+    // reads this one only from the second argument.
+    //
+    // The row id alone is not unique enough. Resend remembers a key for 24 hours across the
+    // whole account, and a reset database numbers codes from 1 again, so a new code reused an
+    // old key with a different body and Resend refused it with invalid_idempotent_request.
+    const options = { idempotencyKey: `signin-code/${codeId ?? 'none'}/${randomUUID()}` };
     const send = () => clientFor(config.mail.resendApiKey).emails.send(message, options);
 
     let { data, error } = await send();
