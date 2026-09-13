@@ -48,7 +48,7 @@ const { db, get, run } = await import('../db/index.js');
 const { request } = await import('../sync/client.js');
 const budget = await import('../sync/budget.js');
 const { rotationQueue, staleRefreshTargets } = await import('../sync/fixtures.js');
-const { insertSeedRows, matchTeamsLocally, resolveTeams } = await import('../sync/seed.js');
+const { insertSeedRows, matchCompetitions, matchTeamsLocally, resolveTeams } = await import('../sync/seed.js');
 const { firstSyncPending, runAuto } = await import('../sync/auto.js');
 const { SEED_TEAMS } = await import('../db/seedData.js');
 const { tick } = await import('../sync/cron.js');
@@ -253,6 +253,53 @@ test('once every season is in, followed competitions come round more often, and 
   run("UPDATE matches SET home_team_id = ? WHERE competition_id = ?", club, liga);
 
   assert.deepEqual(rotationQueue(now).map((c) => c.id), [ligue, efl, liga, serie]);
+});
+
+test('a database seeded with a Nations League per division is brought to one entry on boot', () => {
+  freshInstall();
+  const old = Number(run(
+    `INSERT INTO competitions (provider_id, name, short, display_name, seed_name, is_seed, resolved, created_at)
+     VALUES ('unl', 'UEFA Nations League A', 'UNLA', 'UEFA Nations League', 'UEFA Nations League A', 1, 1, 0)`,
+  ).lastInsertRowid);
+  for (const tier of ['B', 'C', 'D']) {
+    run(
+      'INSERT INTO competitions (name, seed_name, is_seed, resolved, created_at) VALUES (?, ?, 1, -1, 0)',
+      `UEFA Nations League ${tier}`, `UEFA Nations League ${tier}`,
+    );
+  }
+  run(
+    `INSERT INTO matches (provider_id, competition_id, competition_name, home_name, away_name,
+                          kickoff_utc, status, season, is_custom, updated_at)
+     VALUES ('unl-1', ?, 'UEFA Nations League', 'San Marino', 'Gibraltar', ?, 'finished', '26/27', 0, 0)`,
+    old, Date.now(),
+  );
+  // A sync that ran on the new seed list before the rename, and matched the league left over.
+  run(
+    `INSERT INTO competitions (provider_id, name, display_name, seed_name, is_seed, resolved, created_at)
+     VALUES ('concacaf', 'UEFA Nations League', 'CONCACAF Nations League', 'UEFA Nations League', 1, 1, 0)`,
+  );
+  const count = () => get("SELECT COUNT(*) AS n FROM competitions WHERE seed_name LIKE 'UEFA Nations League%'").n;
+
+  migrate();
+  const row = get("SELECT id, provider_id, short FROM competitions WHERE seed_name = 'UEFA Nations League'");
+  assert.deepEqual([row?.id, row?.provider_id, row?.short], [old, 'unl', 'UNL'], 'the matched row is renamed, not replaced');
+  assert.equal(count(), 1, 'the divisions that could never match, and the stray match, are gone');
+
+  insertSeedRows();
+  migrate();
+  assert.equal(count(), 1, 'no second row on the next seed insert or boot');
+});
+
+test("the UEFA Nations League seed does not settle for CONCACAF's", () => {
+  freshInstall();
+  run("INSERT INTO sync_state (key, value) VALUES ('seed.leagues.total', '1'), ('seed.leagues.offset', '1')");
+  run(
+    `INSERT INTO provider_leagues (provider_id, name, country_code, country_name, seasons_json, fetched_at)
+     VALUES ('concacaf', 'CONCACAF Nations League', NULL, 'World', '[2026]', 0)`,
+  );
+  insertSeedRows();
+  matchCompetitions({ finalize: true });
+  assert.equal(get("SELECT resolved FROM competitions WHERE seed_name = 'UEFA Nations League'").resolved, -1);
 });
 
 test('while seasons are still unpulled, a team resolves from fixtures only on an exact name', () => {

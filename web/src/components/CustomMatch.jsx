@@ -6,9 +6,8 @@ import { Stars, ratingText } from './Stars.jsx';
 /**
  * Manual match entry: the fallback for everything the provider does not carry.
  *
- * That is not an edge case here: charity matches, Soccer Aid, the Durand Cup and the lower
- * Nations League tiers all live in this form. A custom match is watched by definition, so
- * it is logged the moment it is added.
+ * That is not an edge case here: charity matches, Soccer Aid and the Durand Cup all live in
+ * this form. A custom match is watched by definition, so it is logged the moment it is added.
  */
 
 const label = {

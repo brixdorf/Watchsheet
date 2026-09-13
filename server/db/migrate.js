@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, all, run, tx } from './index.js';
+import { db, all, get, run, tx } from './index.js';
 import { isMain } from '../lib/ismain.js';
 import { SEED_COMPETITIONS, SEED_TEAMS } from './seedData.js';
 import { competitionPopularity, teamPopularity, unranked } from './popularity.js';
@@ -46,6 +46,73 @@ function applyPopularity() {
       t.name,
       teamPopularity(t.name),
     ).changes;
+  }
+  return touched;
+}
+
+/**
+ * Brings the seed competitions already in a database into line when seedData.js renames or
+ * drops an entry.
+ *
+ * insertSeedRows knows a row by its seed name, so a rename alone would add a second row that
+ * can never resolve (the provider id belongs to the old one), and a dropped entry would sit at
+ * "not in catalog" for good. A renamed row keeps its id, so follows and fixtures stay attached.
+ * A dropped entry is only removed if it never matched, so nothing with fixtures goes.
+ *
+ * The Nations League is the case in hand. The provider carries it as one league with every
+ * division in it, so the seed that matched it was mislabelled "A" while holding B, C and D as
+ * well, and the separate B, C and D seeds could never match anything.
+ */
+const RENAMED_COMPETITIONS = { 'UEFA Nations League A': 'UEFA Nations League' };
+const RETIRED_COMPETITIONS = ['UEFA Nations League B', 'UEFA Nations League C', 'UEFA Nations League D'];
+
+function reconcileSeedCompetitions() {
+  let touched = 0;
+  for (const [from, to] of Object.entries(RENAMED_COMPETITIONS)) {
+    if (!get('SELECT 1 AS x FROM competitions WHERE is_seed = 1 AND seed_name = ?', from)) continue;
+    const seed = SEED_COMPETITIONS.find((c) => c.name === to);
+    tx(() => {
+      // A process that inserted the new name before this ran would leave two rows otherwise.
+      run('DELETE FROM competitions WHERE is_seed = 1 AND seed_name = ? AND resolved <> 1', to);
+      touched += run(
+        'UPDATE competitions SET seed_name = ?, name = ?, short = ? WHERE is_seed = 1 AND seed_name = ?',
+        to,
+        to,
+        seed?.short ?? null,
+        from,
+      ).changes;
+    });
+  }
+  for (const name of RETIRED_COMPETITIONS) {
+    touched += run(
+      'DELETE FROM competitions WHERE is_seed = 1 AND seed_name = ? AND resolved <> 1',
+      name,
+    ).changes;
+  }
+
+  // Two rows under one seed name come from a sync inserting the new name before the rename
+  // above had run, and the second row then matched whatever league was left. Keep the row
+  // holding fixtures, or the oldest, and drop the others. A row anyone follows or that holds
+  // fixtures of its own is never dropped.
+  const doubled = all(
+    `SELECT seed_name, COALESCE(country_hint, '') AS hint FROM competitions
+      WHERE is_seed = 1 GROUP BY seed_name, hint HAVING COUNT(*) > 1`,
+  );
+  for (const { seed_name: name, hint } of doubled) {
+    const rows = all(
+      `SELECT c.id,
+              (SELECT COUNT(*) FROM matches m WHERE m.competition_id = c.id) AS fixtures,
+              EXISTS (SELECT 1 FROM follows f WHERE f.kind = 'competition' AND f.entity_id = c.id) AS followed
+         FROM competitions c
+        WHERE c.is_seed = 1 AND c.seed_name = ? AND COALESCE(c.country_hint, '') = ?
+        ORDER BY fixtures DESC, c.id ASC`,
+      name,
+      hint,
+    );
+    for (const extra of rows.slice(1)) {
+      if (extra.fixtures || extra.followed) continue;
+      touched += run('DELETE FROM competitions WHERE id = ?', extra.id).changes;
+    }
   }
   return touched;
 }
@@ -160,12 +227,13 @@ function mergeSplitTeams() {
 /**
  * The data jobs, apart from the schema work.
  *
- * All four are local, free and idempotent, which is why they run on every boot rather than
+ * All of them are local, free and idempotent, which is why they run on every boot rather than
  * once behind a version number: stating an invariant somewhere it gets re-checked beats a
- * one-shot migration.
+ * one-shot migration. Seed names are reconciled first, so the ranks land on the current names.
  */
 function runMaintenance() {
   return {
+    reconciled: reconcileSeedCompetitions(),
     ranked: applyPopularity(),
     purged: purgeBelowFloor(),
     restamped: restampSeasons(),

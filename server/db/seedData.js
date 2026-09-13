@@ -24,7 +24,9 @@ export const SEED_COMPETITIONS = [
   { name: 'FIFA Intercontinental Cup', short: 'ICC', aliases: ['Intercontinental Cup'] },
   { name: 'FIFA World Cup', short: 'WC', aliases: ['World Cup'] },
   { name: 'EURO', short: 'EURO', aliases: ['Euro Championship', 'European Championship', 'UEFA European Championship'] },
-  { name: 'UEFA Nations League A', short: 'UNLA', aliases: ['Nations League A', 'UEFA Nations League'] },
+  // One entry, not one per division: the provider carries a single league with every division in it.
+  // No "Nations League" alias: it is a whole-word suffix of CONCACAF's league too, and matched it.
+  { name: 'UEFA Nations League', short: 'UNL', aliases: [] },
   { name: 'Finalissima', short: 'FIN', aliases: ['CONMEBOL-UEFA Cup of Champions'] },
   { name: 'Copa América', short: 'CA', aliases: ['Copa America'] },
   { name: 'CONCACAF Gold Cup', short: 'GC', aliases: ['Gold Cup'] },
@@ -39,9 +41,6 @@ export const SEED_COMPETITIONS = [
   { name: 'Europa League', short: 'UEL', aliases: ['UEFA Europa League'] },
   { name: 'AFC Champions League Elite', short: 'ACLE', aliases: ['AFC Champions League'] },
   { name: 'Conference League', short: 'UECL', aliases: ['UEFA Europa Conference League', 'UEFA Conference League'] },
-  { name: 'UEFA Nations League B', short: 'UNLB', aliases: ['Nations League B'] },
-  { name: 'UEFA Nations League C', short: 'UNLC', aliases: ['Nations League C'] },
-  { name: 'UEFA Nations League D', short: 'UNLD', aliases: ['Nations League D'] },
   { name: 'Africa Cup of Nations', short: 'AFCON', aliases: ['CAF Africa Cup of Nations'] },
   { name: 'African Nations Championship', short: 'CHAN', aliases: ['CAF African Nations Championship'] },
   { name: 'Asian Cup', short: 'AC', aliases: ['AFC Asian Cup'] },

@@ -29,12 +29,11 @@ const COMPETITION_ORDER = [
   'Bundesliga', 'Copa America', 'Ligue 1', 'Europa League', 'Copa Libertadores',
   'FIFA Club World Cup', 'Brasileirao|BR', 'MLS|US', 'Africa Cup of Nations', 'FA Cup',
   'Copa del Rey',
-  'UEFA Nations League A', 'Asian Cup', 'CONCACAF Gold Cup', 'EFL Cup', 'Conference League',
+  'UEFA Nations League', 'Asian Cup', 'CONCACAF Gold Cup', 'EFL Cup', 'Conference League',
   'UEFA Super Cup', 'Coppa Italia', 'DFB Pokal', 'Supercopa de Espana',
   'AFC Champions League Elite', 'Community Shield', 'Coupe de France', 'Indian Super League',
   'Supercoppa', 'Super Cup|DE', 'Trophee des champions', 'FIFA Intercontinental Cup',
-  'Finalissima', 'Soccer Aid', 'Sidemen Charity Match', 'UEFA Nations League B',
-  'UEFA Nations League C', 'UEFA Nations League D', 'Durand Cup', 'Super Cup|IN',
+  'Finalissima', 'Soccer Aid', 'Sidemen Charity Match', 'Durand Cup', 'Super Cup|IN',
   'SAFF Championship', 'African Nations Championship',
 ];
 
