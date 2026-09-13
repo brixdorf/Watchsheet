@@ -110,12 +110,3 @@ defaults.
 - **HTTPS.** Session cookies are marked secure in production.
 - **Proxy count.** Set `TRUST_PROXY_HOPS` to match the proxies in front of the app.
 
-## Further reading
-
-[`docs/design.md`](docs/design.md) covers the design in depth:
-- the request budget and the two sync lanes
-- catalog matching and ordering
-- the date the data starts from
-- email delivery
-- the admin screen
-- how the code is laid out
