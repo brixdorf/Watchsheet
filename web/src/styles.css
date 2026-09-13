@@ -572,6 +572,28 @@ textarea::placeholder {
   display: none;
 }
 
+/*
+ * A strip that wraps instead, for the search screen's competition filters.
+ *
+ * On a desk there is no swipe and the scrollbar is hidden, so a row of thirty competitions
+ * showed the first handful and gave no sign the rest existed. Wrapped, every one is in view.
+ * A phone keeps the swipeable row, its far edge faded so it reads as more to come, with room
+ * at the end for the last pill to scroll clear of the fade.
+ */
+@media (min-width: 701px) {
+  .ws-strip--wrap {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+@media (max-width: 700px) {
+  .ws-strip--wrap {
+    padding-right: 28px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+}
+
 .ws-spin {
   animation: ws-spin 0.9s linear infinite;
 }

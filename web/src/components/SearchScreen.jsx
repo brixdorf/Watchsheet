@@ -58,7 +58,7 @@ export function SearchScreen({ season, filters, patches, onOpen, onToggle, onOpe
         />
       </div>
 
-      <div className="ws-strip" style={{ marginBottom: 18 }}>
+      <div className="ws-strip ws-strip--wrap" style={{ marginBottom: 18 }}>
         {filters.customCount > 0 && (
           <FilterPill active={competition === -1} onClick={() => pick(-1)}>
             Custom

@@ -115,6 +115,15 @@ export default function App() {
   // session that has not chosen anything to put in it yet.
   const onboarding = !user || !user.name || needsPicker;
 
+  // The competition pills are whatever holds matches right now, which on a new install grows
+  // for hours as the first sync works through each season. Fetched only at sign-in, the list
+  // stayed as short as it was then for the whole session. It is a cheap local query, so ask
+  // again each time Search opens.
+  useEffect(() => {
+    if (onboarding || tab !== 'search') return;
+    api.filters().then(setFilters).catch(() => {});
+  }, [onboarding, tab]);
+
   useEffect(() => {
     if (onboarding) return;
     loadCore().catch(() => flash('Could not load your data', 'negative'));
