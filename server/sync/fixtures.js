@@ -206,21 +206,49 @@ export async function refreshRecent({ maxRequests = Infinity, log = () => {} } =
 /* -------------------------------------------------------------------------- */
 
 /**
- * Competitions to re-pull. Never-synced rows lead, and among those the ones someone follows and
- * then the most popular, so a new install's feed fills in the order people will look at it.
- * After that, least recently completed first.
+ * Competitions to re-pull, most due first.
+ *
+ * Never-synced rows lead, the followed ones and then the most popular, so a new install's feed
+ * fills in the order people will look at it.
+ *
+ * After that a competition is due in proportion to how long ago it was last pulled, weighted by
+ * whether anyone cares about it, across every account:
+ *   - followed as a competition     x4
+ *   - a followed team plays in it    x2
+ *   - nothing left in it to play     x1/2
+ *
+ * Plain least-recently-pulled order treated a followed cup like a league nobody follows, so a
+ * newly drawn round waited behind all 38 competitions, which at a few requests an hour is most
+ * of a day. Weighted, a followed competition comes round several times for each pass over the
+ * rest. Nothing drops out: an unfollowed competition only waits longer, so it still refreshes.
  */
-export function rotationQueue() {
+export function rotationQueue(now = Date.now()) {
   return all(
-    `SELECT c.* FROM competitions c
-      WHERE c.resolved = 1 AND c.provider_id IS NOT NULL
-      ORDER BY (c.last_full_sync_at IS NULL) DESC,
-               CASE WHEN c.last_full_sync_at IS NULL THEN
-                 EXISTS (SELECT 1 FROM follows f WHERE f.kind = 'competition' AND f.entity_id = c.id)
-               END DESC,
-               CASE WHEN c.last_full_sync_at IS NULL THEN c.popularity END DESC,
-               COALESCE(c.last_full_sync_at, 0) ASC,
-               c.id ASC`,
+    `WITH followed_teams AS (SELECT DISTINCT entity_id AS id FROM follows WHERE kind = 'team'),
+          scored AS (
+            SELECT c.*,
+                   EXISTS (SELECT 1 FROM follows f WHERE f.kind = 'competition' AND f.entity_id = c.id) AS followed,
+                   (CASE
+                      WHEN EXISTS (SELECT 1 FROM follows f WHERE f.kind = 'competition' AND f.entity_id = c.id) THEN 4
+                      WHEN EXISTS (SELECT 1 FROM matches m
+                                    WHERE m.competition_id = c.id
+                                      AND (m.home_team_id IN (SELECT id FROM followed_teams)
+                                        OR m.away_team_id IN (SELECT id FROM followed_teams))) THEN 2
+                      ELSE 1
+                    END)
+                   * (CASE WHEN EXISTS (SELECT 1 FROM matches m WHERE m.competition_id = c.id AND m.kickoff_utc > ?)
+                           THEN 1.0 ELSE 0.5 END) AS weight
+              FROM competitions c
+             WHERE c.resolved = 1 AND c.provider_id IS NOT NULL
+          )
+     SELECT * FROM scored
+      ORDER BY (last_full_sync_at IS NULL) DESC,
+               CASE WHEN last_full_sync_at IS NULL THEN followed END DESC,
+               CASE WHEN last_full_sync_at IS NULL THEN popularity END DESC,
+               (? - COALESCE(last_full_sync_at, 0)) * weight DESC,
+               id ASC`,
+    now,
+    now,
   );
 }
 

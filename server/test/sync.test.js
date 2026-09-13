@@ -47,7 +47,7 @@ migrate();
 const { db, get, run } = await import('../db/index.js');
 const { request } = await import('../sync/client.js');
 const budget = await import('../sync/budget.js');
-const { staleRefreshTargets } = await import('../sync/fixtures.js');
+const { rotationQueue, staleRefreshTargets } = await import('../sync/fixtures.js');
 const { insertSeedRows, matchTeamsLocally, resolveTeams } = await import('../sync/seed.js');
 const { firstSyncPending, runAuto } = await import('../sync/auto.js');
 const { SEED_TEAMS } = await import('../db/seedData.js');
@@ -219,6 +219,40 @@ test('a catalog with no seed rows beside it still counts as a new install, and a
   await runAuto({ maxRequests: 1 });
   assert.equal(get("SELECT resolved FROM competitions WHERE seed_name = 'Premier League'").resolved, 1);
   assert.ok(!paths.some((p) => p.startsWith('/leagues')), 'the catalog it already had is not fetched again');
+});
+
+test('once every season is in, followed competitions come round more often, and the rest still do', () => {
+  freshInstall();
+  insertSeedRows();
+  const hour = 3_600_000;
+  const now = Date.now();
+  const pulled = (name, hoursAgo, { upcoming = true } = {}) => {
+    const { id } = get('SELECT id FROM competitions WHERE seed_name = ?', name);
+    run(
+      'UPDATE competitions SET resolved = 1, provider_id = ?, last_full_sync_at = ? WHERE id = ?',
+      `p-${id}`, now - hoursAgo * hour, id,
+    );
+    if (upcoming) {
+      run(
+        `INSERT INTO matches (provider_id, competition_id, competition_name, home_name, away_name,
+                              kickoff_utc, status, season, is_custom, updated_at)
+         VALUES (?, ?, ?, 'Home', 'Away', ?, 'scheduled', '26/27', 0, 0)`,
+        `ahead-${id}`, id, name, now + 48 * hour,
+      );
+    }
+    return id;
+  };
+
+  const efl = pulled('EFL Cup', 2); //                 followed:             2h x4 = 8
+  const liga = pulled('LaLiga', 3); //                 a followed team's:    3h x2 = 6
+  const serie = pulled('Serie A', 5, { upcoming: false }); // nothing ahead: 5h x1/2 = 2.5
+  const ligue = pulled('Ligue 1', 12); //              nobody's:            12h x1 = 12
+  run("INSERT INTO follows (user_id, kind, entity_id, created_at) VALUES (1, 'competition', ?, 0)", efl);
+  const club = addTeam('t-club', 'Some Club');
+  run("INSERT INTO follows (user_id, kind, entity_id, created_at) VALUES (1, 'team', ?, 0)", club);
+  run("UPDATE matches SET home_team_id = ? WHERE competition_id = ?", club, liga);
+
+  assert.deepEqual(rotationQueue(now).map((c) => c.id), [ligue, efl, liga, serie]);
 });
 
 test('while seasons are still unpulled, a team resolves from fixtures only on an exact name', () => {
