@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { BudgetExhaustedError, recordHeaders, reserve } from './budget.js';
+import { BudgetExhaustedError, recordHeaders, refund, reserve } from './budget.js';
 
 /**
  * The only place in the codebase that talks to Highlightly.
@@ -13,6 +13,20 @@ export class ProviderError extends Error {
     super(`Highlightly responded ${status}: ${String(body).slice(0, 300)}`);
     this.name = 'ProviderError';
     this.status = status;
+  }
+}
+
+/**
+ * Highlightly turned the key itself away: mistyped, revoked, or replaced by a regenerated one.
+ * No retry and no later tick can fix that, so callers stop asking rather than repeating it.
+ */
+export class AuthError extends ProviderError {
+  constructor(status, body) {
+    super(status, body);
+    this.name = 'AuthError';
+    this.message =
+      `Highlightly rejected HIGHLIGHTLY_API_KEY (${status}). Copy the key from the Highlightly `
+      + 'dashboard, set it again, and restart the server.';
   }
 }
 
@@ -40,7 +54,7 @@ export async function request(pathname, params = {}, { retries = 2 } = {}) {
 
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    reserve(1);
+    const day = reserve(1);
     let res;
     try {
       res = await fetch(url, {
@@ -57,11 +71,20 @@ export async function request(pathname, params = {}, { retries = 2 } = {}) {
       continue;
     }
 
-    recordHeaders(res.headers);
+    const counted = recordHeaders(res.headers);
 
     if (res.ok) return res.json();
 
     const body = await res.text().catch(() => '');
+
+    // A bad key is refused before the quota is touched, and the refusal carries no rate-limit
+    // headers. Without them there is nothing to say it was counted, so the reservation goes
+    // back; otherwise a dead key would quietly eat the day's budget one tick at a time.
+    if (res.status === 401) {
+      if (!counted) refund(1, day);
+      throw new AuthError(res.status, body);
+    }
+
     lastErr = new ProviderError(res.status, body);
 
     // A provider-side 429 means our own ledger is behind reality. Stop the run rather

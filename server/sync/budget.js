@@ -62,9 +62,26 @@ export function reserve(n = 1) {
     Date.now(),
     n,
   );
+  return day;
 }
 
-/** Reconciles the ledger with whatever the provider reported on the last response. */
+/**
+ * Hands back a reservation for a request the provider turned away without counting. Only for
+ * that case: anything that may have reached the quota stays charged.
+ */
+export function refund(n = 1, day = dayKey()) {
+  run(
+    'UPDATE api_usage SET requests = MAX(0, requests - ?), updated_at = ? WHERE day = ?',
+    n,
+    Date.now(),
+    day,
+  );
+}
+
+/**
+ * Reconciles the ledger with whatever the provider reported on the last response. Returns
+ * whether it reported anything, which is the only sign a response was counted against the quota.
+ */
 export function recordHeaders(headers) {
   const toInt = (v) => {
     const n = Number.parseInt(v ?? '', 10);
@@ -72,7 +89,7 @@ export function recordHeaders(headers) {
   };
   const rem = toInt(headers.get('x-ratelimit-requests-remaining'));
   const lim = toInt(headers.get('x-ratelimit-requests-limit'));
-  if (rem == null && lim == null) return;
+  if (rem == null && lim == null) return false;
 
   const day = dayKey();
   run(
@@ -87,6 +104,7 @@ export function recordHeaders(headers) {
     lim,
     Date.now(),
   );
+  return true;
 }
 
 export function budgetStatus(day = dayKey()) {

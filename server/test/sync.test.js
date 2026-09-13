@@ -20,11 +20,13 @@ let hits = 0;
 const provider = http.createServer((req, res) => {
   hits++;
   const step = script.shift() ?? { status: 200, json: { data: [], pagination: { totalCount: 0 } } };
-  res.writeHead(step.status, {
-    'content-type': 'application/json',
-    'x-ratelimit-requests-limit': '100',
-    'x-ratelimit-requests-remaining': String(step.remaining ?? 90),
-  });
+  const headers = { 'content-type': 'application/json' };
+  // A refused key comes back without the rate-limit headers, so a step can leave them off.
+  if (step.rateLimit !== false) {
+    headers['x-ratelimit-requests-limit'] = '100';
+    headers['x-ratelimit-requests-remaining'] = String(step.remaining ?? 90);
+  }
+  res.writeHead(step.status, headers);
   res.end(JSON.stringify(step.json ?? { message: 'error' }));
 });
 await new Promise((resolve) => provider.listen(0, '127.0.0.1', resolve));
@@ -46,6 +48,7 @@ const budget = await import('../sync/budget.js');
 const { staleRefreshTargets } = await import('../sync/fixtures.js');
 const { insertSeedRows, resolveTeams } = await import('../sync/seed.js');
 const { SEED_TEAMS } = await import('../db/seedData.js');
+const { tick } = await import('../sync/cron.js');
 
 after(() => {
   provider.closeAllConnections();
@@ -115,4 +118,27 @@ test('a seed team is only marked missing once both of its lookups have run', asy
   await resolveTeams({ maxRequests: 5 });
   assert.equal(hits, 3);
   assert.equal(state(), -1, 'both searches missed');
+});
+
+test('a rejected key stops at once and is not charged', async () => {
+  script = [{ status: 401, rateLimit: false, json: { message: 'Invalid request token.' } }];
+  await assert.rejects(request('/leagues'), { name: 'AuthError' });
+  assert.equal(hits, 1, 'not retried');
+  assert.equal(budget.usageFor().requests, 0, 'the provider did not count it, so neither do we');
+});
+
+// Last, because a rejected key pauses the schedule for the rest of the process.
+test('a tick that meets a rejected key reports it and stops asking', async () => {
+  run('DELETE FROM sync_state');
+  run('DELETE FROM provider_leagues');
+  script = [{ status: 401, rateLimit: false }];
+  const first = await tick({ slice: 3, job: 'seed' });
+  assert.equal(first.job, 'error');
+  assert.match(first.error, /rejected HIGHLIGHTLY_API_KEY/);
+  assert.equal(first.spent, 0);
+  assert.equal(hits, 1);
+
+  const second = await tick({ slice: 3, job: 'seed' });
+  assert.ok(second.skipped, 'the next tick does not call the provider again');
+  assert.equal(hits, 1);
 });

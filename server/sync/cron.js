@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { config } from '../config.js';
-import { remaining } from './budget.js';
+import { remaining, usageFor } from './budget.js';
+import { AuthError } from './client.js';
 import { runSync } from './fixtures.js';
 import { runSeed, seedStatus } from './seed.js';
 
@@ -20,18 +21,24 @@ const TICKS_PER_DAY = 24;
 let last = null;
 let running = false;
 let task = null;
+// Set once Highlightly refuses the key. The key is only read at startup, so nothing changes
+// until a restart, and asking again every hour would only repeat the same error in the log.
+let keyRejected = null;
 
 export const lastRun = () => last;
+export const keyRejection = () => keyRejected;
 
 export async function tick({ slice = config.sync.slice, job = 'auto' } = {}) {
   if (running) return { skipped: 'already running' };
   if (!config.highlightly.apiKey) return { skipped: 'no API key' };
+  if (keyRejected) return { skipped: 'the API key was rejected, so sync is paused until a restart' };
 
   const budget = Math.min(slice, remaining());
   if (budget < 1) return { skipped: 'no budget left today' };
 
   running = true;
   const startedAt = Date.now();
+  const spentBefore = usageFor().requests;
   try {
     // 'auto' is what the schedule uses: finish seeding first, because the rotation has
     // no competitions to work through until it does.
@@ -48,8 +55,15 @@ export async function tick({ slice = config.sync.slice, job = 'auto' } = {}) {
     };
     return last;
   } catch (err) {
-    last = { at: startedAt, job: 'error', error: err.message };
-    console.error('Sync tick failed:', err.message);
+    // What the ledger moved by, since a failed job never gets to report its own count.
+    const spent = Math.max(0, usageFor().requests - spentBefore);
+    last = { at: startedAt, job: 'error', spent, error: err.message };
+    if (err instanceof AuthError) {
+      keyRejected = err.message;
+      console.error(`Sync paused: ${err.message}`);
+    } else {
+      console.error('Sync tick failed:', err.message);
+    }
     return last;
   } finally {
     running = false;

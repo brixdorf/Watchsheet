@@ -4,7 +4,7 @@ import { all, get, run } from '../db/index.js';
 import { requireAdmin, isAdmin } from '../lib/admin.js';
 import { requireAuth } from '../lib/session.js';
 import { budgetStatus, remaining } from '../sync/budget.js';
-import { isRunning, lastRun, nextRun, tick } from '../sync/cron.js';
+import { isRunning, keyRejection, lastRun, nextRun, tick } from '../sync/cron.js';
 import { fixtureStatus } from '../sync/fixtures.js';
 import { seedStatus } from '../sync/seed.js';
 
@@ -33,6 +33,7 @@ adminRouter.get('/sync', (_req, res) => {
       slicePerTick: config.sync.slice,
       nextRun: nextRun(),
       running: isRunning(),
+      keyRejected: keyRejection(),
     },
   });
 });
@@ -91,6 +92,9 @@ adminRouter.post('/sync/run', async (req, res) => {
 
   if (!config.highlightly.apiKey) {
     return res.status(409).json({ error: 'No provider API key is configured.' });
+  }
+  if (keyRejection()) {
+    return res.status(409).json({ error: keyRejection() });
   }
   if (isRunning()) {
     return res.status(409).json({ error: 'A sync is already running. Give it a moment.' });
