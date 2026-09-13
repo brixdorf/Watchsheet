@@ -11,6 +11,9 @@ import { Eyebrow, EmptyNote, SectionHeading, Spinner } from './layout.jsx';
  * here, behind ADMIN_EMAILS.
  */
 
+/** The per-run ceiling the server allows a manual run, MAX_MANUAL_REQUESTS in routes/admin.js. */
+const SEED_RUN_REQUESTS = 25;
+
 /** "1 request", not "1 requests". */
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -61,6 +64,9 @@ export function AdminScreen({ onClose, onFlash }) {
   const runNow = async () => {
     setRunning(true);
     try {
+      // A new install needs about 65 requests before there is anything to follow, which is a
+      // day of hourly ticks at 3 each. Until then the button takes the largest run allowed.
+      const res = await api.runSync('auto', status?.seed.complete ? undefined : SEED_RUN_REQUESTS);
       const result = res.result ?? {};
       if (result.skipped) onFlash(`Nothing to do. ${result.skipped}.`, 'warn');
       else if (result.error) onFlash(`Sync failed: ${result.error}`, 'negative');
@@ -213,7 +219,7 @@ export function AdminScreen({ onClose, onFlash }) {
               style={{ padding: '10px 16px', fontSize: 14 }}
             >
               <i className={running ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-play'} />
-              {running ? 'Running…' : 'Run sync'}
+              {running ? 'Running…' : status.seed.complete ? 'Run sync' : `Continue seeding · up to ${SEED_RUN_REQUESTS} requests`}
             </button>
             {status.budget.remaining < 1 && (
               <div style={{ fontSize: 12.5, color: 'var(--warn)', marginTop: 10 }}>
