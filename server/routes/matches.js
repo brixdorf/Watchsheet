@@ -24,7 +24,8 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const HAYSTACK = `LOWER(
   COALESCE(ht.name, m.home_name) || ' ' || COALESCE(at.name, m.away_name) || ' ' ||
   COALESCE(ht.short, '') || ' ' || COALESCE(at.short, '') || ' ' ||
-  COALESCE(c.seed_name, m.competition_name) || ' ' || m.season || ' ' ||
+  COALESCE(c.seed_name, m.competition_name) || ' ' || COALESCE(c.display_name, '') || ' ' ||
+  m.season || ' ' ||
   COALESCE(m.round, '') || ' ' ||
   DATE(m.kickoff_utc / 1000, 'unixepoch') || ' ' ||
   CASE STRFTIME('%m', m.kickoff_utc / 1000, 'unixepoch')
@@ -108,6 +109,24 @@ matchesRouter.get('/feed', (req, res) => {
   });
 });
 
+/**
+ * What people type between two sides, which no match's text contains. Every word has to match,
+ * so "Millwall vs Newcastle" found nothing at all while "Millwall Newcastle" found the tie.
+ */
+const FILLER = new Set(['v', 'v.', 'vs', 'vs.', 'versus', 'x', '@', '&', '-', '–', '—']);
+
+/**
+ * The words a query is matched on. A dash between letters splits ("Millwall-Newcastle"), but
+ * one between digits does not, so a date like 2026-09-08 still has to match as a date.
+ */
+function searchWords(q) {
+  return q
+    .replace(/(\p{L})[-–—](?=\p{L})/gu, '$1 ')
+    .split(/\s+/)
+    .filter((w) => w && !FILLER.has(w))
+    .slice(0, 6);
+}
+
 /* Search runs entirely against local SQLite. It never touches the provider. */
 matchesRouter.get('/search', (req, res) => {
   const uid = req.user.id;
@@ -135,7 +154,7 @@ matchesRouter.get('/search', (req, res) => {
   }
   // Every word must appear somewhere, which is how the design's search behaved. The words are
   // literal text, so LIKE's own wildcards are escaped: searching "_" used to match everything.
-  for (const word of q.split(/\s+/).filter(Boolean).slice(0, 6)) {
+  for (const word of searchWords(q)) {
     clauses.push(`${HAYSTACK} LIKE ? ESCAPE '!'`);
     params.push(`%${word.replace(/[!%_]/g, '!$&')}%`);
   }

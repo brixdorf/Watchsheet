@@ -117,6 +117,21 @@ test('search treats % and _ as the characters they are', async () => {
   assert.equal((await call('/api/matches/search?q=%25', { cookie })).json.matches.length, 0);
 });
 
+test('search skips the "vs" typed between two sides, but keeps a date whole', async () => {
+  const { cookie } = await signIn();
+  const kickoff = Date.parse('2026-09-08T19:00:00Z');
+  insertMatch({ home: 'Millwall', away: 'Newcastle United', kickoff });
+  insertMatch({ home: 'Decoy Athletic', away: 'Other Town', kickoff: Date.parse('2026-08-09T19:00:00Z') });
+  const found = async (q) => (await call(`/api/matches/search?q=${encodeURIComponent(q)}`, { cookie })).json.matches;
+
+  for (const q of ['Millwall vs Newcastle', 'millwall v. newcastle', 'Millwall - Newcastle', 'Millwall-Newcastle']) {
+    assert.ok((await found(q)).some((m) => m.home.name === 'Millwall'), q);
+  }
+  const byDate = await found('2026-09-08');
+  assert.ok(byDate.some((m) => m.home.name === 'Millwall'));
+  assert.ok(!byDate.some((m) => m.home.name === 'Decoy Athletic'), '2026-08-09 is not 2026-09-08');
+});
+
 test('the export filename survives a hostile scope', async () => {
   const { cookie } = await signIn();
   for (const scope of ['26/27"; evil=1', 'all\r\nSet-Cookie: x=1']) {
