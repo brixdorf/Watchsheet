@@ -45,6 +45,12 @@ const HAYSTACK = `LOWER(
  *
  * Teams are asked for first and the rest of the card goes to their competitions, so an
  * account following two clubs still gets a full feed instead of a short one.
+ *
+ * That rest is shared out between the competitions in the same spirit. Cut by kick-off time
+ * alone, whichever competition plays soonest took every slot: a LaLiga weekend filled "Also on"
+ * before the Premier League kicked off, and the Champions League, a month from its next night,
+ * never appeared at all. Each competition's nearest match now comes before any competition's
+ * second, and the ones chosen are then shown in kick-off order.
  */
 const TEAM_SLOTS = 8;
 const TOTAL_SLOTS = 14;
@@ -57,12 +63,13 @@ matchesRouter.get('/feed', (req, res) => {
 
   // followedTeamClause takes two user ids, followedCompOnlyClause three: one for the
   // competition test and two for the team test it negates.
-  const section = (window, windowParams, order) => {
+  const section = (window, windowParams, direction) => {
+    const byKickoff = `m.kickoff_utc ${direction}`;
     const teams = queryMatches(
       uid,
       `${teamOnly} AND ${window}`,
       [uid, uid, ...windowParams],
-      `${order} LIMIT ${TEAM_SLOTS}`,
+      `ORDER BY ${byKickoff} LIMIT ${TEAM_SLOTS}`,
       { followedTeam: true },
     );
     const room = TOTAL_SLOTS - teams.length;
@@ -71,9 +78,11 @@ matchesRouter.get('/feed', (req, res) => {
         uid,
         `${compOnly} AND ${window}`,
         [uid, uid, uid, ...windowParams],
-        `${order} LIMIT ${room}`,
+        // Round-robin across competitions: rank 1 of each, then rank 2 of each, and so on.
+        `ORDER BY ROW_NUMBER() OVER (PARTITION BY m.competition_id ORDER BY ${byKickoff}), ${byKickoff}
+         LIMIT ${room}`,
         { followedTeam: false },
-      )
+      ).sort((a, b) => (direction === 'ASC' ? a.kickoff - b.kickoff : b.kickoff - a.kickoff))
       : [];
     return teams.concat(others);
   };
@@ -81,10 +90,10 @@ matchesRouter.get('/feed', (req, res) => {
   const upcoming = section(
     `m.kickoff_utc >= ? AND m.status NOT IN ('cancelled')`,
     [now - 3 * 3_600_000],
-    'ORDER BY m.kickoff_utc ASC',
+    'ASC',
   );
 
-  const recent = section('m.kickoff_utc < ?', [now], 'ORDER BY m.kickoff_utc DESC');
+  const recent = section('m.kickoff_utc < ?', [now], 'DESC');
 
   const followCount = get(
     'SELECT COUNT(*) AS n FROM follows WHERE user_id = ?',

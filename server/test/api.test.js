@@ -174,6 +174,45 @@ test("another user's custom match cannot be read, logged or deleted", async () =
   assert.equal((await call(`/api/matches/${id}`, { cookie: owner.cookie })).status, 200);
 });
 
+test('the feed shares its competition slots out, rather than giving them all to the soonest', async () => {
+  const { user, cookie } = await signIn();
+  const comp = (name) => {
+    const id = Number(run(
+      'INSERT INTO competitions (provider_id, name, seed_name, resolved, created_at) VALUES (?, ?, ?, 1, ?)',
+      `comp-${name}`, name, name, Date.now(),
+    ).lastInsertRowid);
+    run("INSERT INTO follows (user_id, kind, entity_id, created_at) VALUES (?, 'competition', ?, ?)", user.id, id, Date.now());
+    return id;
+  };
+  const fixture = (competitionId, kickoff, status) => run(
+    `INSERT INTO matches (provider_id, competition_id, competition_name, home_name, away_name,
+                          kickoff_utc, status, season, is_custom, updated_at)
+     VALUES (?, ?, 'Test', 'Home', 'Away', ?, ?, '26/27', 0, ?)`,
+    `feed-${Math.random()}`, competitionId, kickoff, status, Date.now(),
+  );
+  const hour = 3_600_000;
+  const now = Date.now();
+  const [busy, later, faraway] = [comp('Busy League'), comp('Later League'), comp('Faraway Cup')];
+  tx(() => {
+    for (let i = 1; i <= 20; i++) {
+      fixture(busy, now + i * hour, 'scheduled');
+      fixture(busy, now - i * hour, 'finished');
+    }
+    fixture(later, now + 30 * hour, 'scheduled');
+    fixture(faraway, now + 30 * 24 * hour, 'scheduled');
+    fixture(faraway, now - 10 * 24 * hour, 'finished');
+  });
+
+  const { upcoming, recent } = (await call('/api/matches/feed', { cookie })).json;
+  const competitions = (list) => new Set(list.map((m) => m.competition.id));
+  assert.deepEqual(competitions(upcoming), new Set([busy, later, faraway]), 'a busy weekend does not crowd out the rest');
+  assert.deepEqual(competitions(recent), new Set([busy, faraway]));
+  assert.equal(upcoming.length, 14, 'the card is still full');
+  const kickoffs = (list) => list.map((m) => m.kickoff);
+  assert.deepEqual(kickoffs(upcoming), kickoffs(upcoming).toSorted((a, b) => a - b), 'shown in kick-off order');
+  assert.deepEqual(kickoffs(recent), kickoffs(recent).toSorted((a, b) => b - a));
+});
+
 test('the team catalog counts each watched match once and knows who is playing soon', async () => {
   const { user, cookie } = await signIn();
   const team = (name) => Number(run(
