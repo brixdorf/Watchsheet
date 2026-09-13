@@ -14,6 +14,9 @@ import { Eyebrow, EmptyNote, SectionHeading, Spinner } from './layout.jsx';
 /** The per-run ceiling the server allows a manual run, MAX_MANUAL_REQUESTS in routes/admin.js. */
 const SEED_RUN_REQUESTS = 25;
 
+/** A new install: the catalog, a first pull of some season, or some seed teams still to go. */
+const firstSync = (s) => !!s && (!s.seed.complete || s.fixtures.rotation.neverSynced > 0);
+
 /** "1 request", not "1 requests". */
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -64,9 +67,9 @@ export function AdminScreen({ onClose, onFlash }) {
   const runNow = async () => {
     setRunning(true);
     try {
-      // A new install needs about 65 requests before there is anything to follow, which is a
-      // day of hourly ticks at 3 each. Until then the button takes the largest run allowed.
-      const res = await api.runSync('auto', status?.seed.complete ? undefined : SEED_RUN_REQUESTS);
+      // A new install needs about 70 requests before every competition has fixtures, which at 3
+      // a tick is most of a day. Until then the button takes the largest run allowed.
+      const res = await api.runSync('auto', firstSync(status) ? SEED_RUN_REQUESTS : undefined);
       const result = res.result ?? {};
       if (result.skipped) onFlash(`Nothing to do. ${result.skipped}.`, 'warn');
       else if (result.error) onFlash(`Sync failed: ${result.error}`, 'negative');
@@ -219,7 +222,7 @@ export function AdminScreen({ onClose, onFlash }) {
               style={{ padding: '10px 16px', fontSize: 14 }}
             >
               <i className={running ? 'ph ph-circle-notch ws-spin' : 'ph-bold ph-play'} />
-              {running ? 'Running…' : status.seed.complete ? 'Run sync' : `Continue seeding · up to ${SEED_RUN_REQUESTS} requests`}
+              {running ? 'Running…' : firstSync(status) ? `Continue first sync · up to ${SEED_RUN_REQUESTS} requests` : 'Run sync'}
             </button>
             {status.budget.remaining < 1 && (
               <div style={{ fontSize: 12.5, color: 'var(--warn)', marginTop: 10 }}>
@@ -243,7 +246,9 @@ export function AdminScreen({ onClose, onFlash }) {
               value={
                 status.seed.complete
                   ? 'complete'
-                  : `in progress, ${status.seed.leagueCatalog.fetched} of ${status.seed.leagueCatalog.total}`
+                  : !status.seed.leagueCatalog.complete
+                    ? `league catalog, ${status.seed.leagueCatalog.fetched} of ${status.seed.leagueCatalog.total || '…'}`
+                    : `${status.seed.teams.pending} teams to match`
               }
             />
             <Line
