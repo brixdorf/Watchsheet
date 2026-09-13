@@ -49,7 +49,7 @@ const { request } = await import('../sync/client.js');
 const budget = await import('../sync/budget.js');
 const { staleRefreshTargets } = await import('../sync/fixtures.js');
 const { insertSeedRows, matchTeamsLocally, resolveTeams } = await import('../sync/seed.js');
-const { runAuto } = await import('../sync/auto.js');
+const { firstSyncPending, runAuto } = await import('../sync/auto.js');
 const { SEED_TEAMS } = await import('../db/seedData.js');
 const { tick } = await import('../sync/cron.js');
 
@@ -145,18 +145,14 @@ test("a new API key starts the day afresh, since the old key's count is not its 
   budget.rebaseLedgerForKey('test-key');
 });
 
-/** Back to a new install: no fixtures, no mirrored leagues, every seed row unresolved. */
+/**
+ * A new install: empty tables, as a first boot or a deleted database leaves them. No seed rows
+ * either, since inserting them here is what hid a first sync that never inserted them itself.
+ */
 function freshInstall() {
-  run('DELETE FROM matches');
-  run('DELETE FROM follows');
-  run('DELETE FROM provider_leagues');
-  run('DELETE FROM sync_state');
-  run('DELETE FROM teams WHERE is_seed = 0');
-  run('DELETE FROM competitions WHERE is_seed = 0');
-  insertSeedRows();
-  run('UPDATE teams SET resolved = 0, provider_id = NULL, logo_url = NULL');
-  run(`UPDATE competitions SET resolved = 0, provider_id = NULL, sync_cursor = 0, sync_total = NULL,
-                               last_full_sync_at = NULL`);
+  for (const table of ['matches', 'follows', 'teams', 'competitions', 'provider_leagues', 'sync_state']) {
+    run(`DELETE FROM ${table}`);
+  }
   run("INSERT OR IGNORE INTO users (id, email, name, created_at) VALUES (1, 'fan@example.com', 'Fan', 0)");
 }
 
@@ -176,19 +172,27 @@ const addTeam = (providerId, name) => Number(run(
 ).lastInsertRowid);
 const seedTeam = (name) => get('SELECT id, provider_id, resolved FROM teams WHERE seed_name = ?', name);
 
-test('a first run reaches fixtures, followed competitions first, and takes teams from them unsearched', async () => {
+test('a first run on an empty database reaches fixtures, followed competitions first, teams unsearched', async () => {
   freshInstall();
-  const laliga = get("SELECT id FROM competitions WHERE seed_name = 'LaLiga'").id;
-  run("INSERT INTO follows (user_id, kind, entity_id, created_at) VALUES (1, 'competition', ?, 0)", laliga);
+  assert.equal(firstSyncPending(), true);
+
+  // A run cut off right after the catalog, like a small manual run, then a follow in between.
   script = [
     { status: 200, json: { data: [league('pl', 'Premier League', 'GB', 'England'), league('ll', 'LaLiga', 'ES', 'Spain')], pagination: { totalCount: 2 } } },
+  ];
+  const first = await runAuto({ maxRequests: 1 });
+  assert.equal(first.job, 'catalog');
+  const laliga = get("SELECT id, resolved FROM competitions WHERE seed_name = 'LaLiga'");
+  assert.equal(laliga?.resolved, 1, 'the run creates the seed rows and matches them');
+  run("INSERT INTO follows (user_id, kind, entity_id, created_at) VALUES (1, 'competition', ?, 0)", laliga.id);
+
+  script = [
     { status: 200, json: { data: [fixture('m1', ['t-bar', 'Barcelona'], ['t-rma', 'Real Madrid'])], pagination: { totalCount: 1 } } },
     { status: 200, json: { data: [fixture('m2', ['t-ars', 'Arsenal'], ['t-tot', 'Tottenham'])], pagination: { totalCount: 1 } } },
   ];
-
   const result = await runAuto({ maxRequests: 10 });
 
-  assert.equal(result.job, 'catalog + fixtures');
+  assert.equal(result.job, 'fixtures');
   assert.equal(hits, 3, 'one catalog page and one page per season, nothing else');
   assert.ok(paths[0].startsWith('/leagues'));
   assert.match(paths[1], /leagueId=ll/, 'the followed competition is pulled before the more popular one');
@@ -202,8 +206,24 @@ test('a first run reaches fixtures, followed competitions first, and takes teams
   assert.equal(get("SELECT COUNT(*) AS n FROM teams WHERE provider_id = 't-bar'").n, 1, 'no duplicate row left');
 });
 
+test('a catalog with no seed rows beside it still counts as a new install, and a run repairs it', async () => {
+  freshInstall();
+  run("INSERT INTO sync_state (key, value) VALUES ('seed.leagues.total', '1'), ('seed.leagues.offset', '1')");
+  run(
+    `INSERT INTO provider_leagues (provider_id, name, country_code, country_name, seasons_json, fetched_at)
+     VALUES ('pl', 'Premier League', 'GB', 'England', '[2026]', 0)`,
+  );
+  assert.equal(firstSyncPending(), true, 'so the server starts a first sync on boot');
+
+  script = [{ status: 200, json: { data: [], pagination: { totalCount: 0 } } }];
+  await runAuto({ maxRequests: 1 });
+  assert.equal(get("SELECT resolved FROM competitions WHERE seed_name = 'Premier League'").resolved, 1);
+  assert.ok(!paths.some((p) => p.startsWith('/leagues')), 'the catalog it already had is not fetched again');
+});
+
 test('while seasons are still unpulled, a team resolves from fixtures only on an exact name', () => {
   freshInstall();
+  insertSeedRows();
   addTeam('t-bsc', 'Barcelona SC');
   matchTeamsLocally({ strict: true });
   assert.equal(seedTeam('Barcelona').resolved, 0, "Ecuador's Barcelona SC is not taken for the seed");
@@ -222,6 +242,7 @@ test('while seasons are still unpulled, a team resolves from fixtures only on an
 
 test('a searched team whose id a fixture already gave a row takes that row over', async () => {
   freshInstall();
+  insertSeedRows();
   const india = addTeam('t-ind', 'India');
   run(
     `INSERT INTO matches (provider_id, competition_name, home_team_id, home_name, away_name,

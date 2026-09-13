@@ -3,6 +3,7 @@ import { BudgetExhaustedError } from './budget.js';
 import { neverSyncedCount, runSync } from './fixtures.js';
 import {
   fetchLeagueCatalog,
+  insertSeedRows,
   leagueCatalogComplete,
   matchCompetitions,
   matchTeamsLocally,
@@ -25,26 +26,55 @@ import {
  * of its cost, so a new install could spend its first day's budget on them and show nothing to
  * mark. Once all three are done this is the ordinary sync.
  */
+
+const pendingCompetitions = () =>
+  get('SELECT COUNT(*) AS n FROM competitions WHERE is_seed = 1 AND resolved = 0').n;
+const pendingTeams = () =>
+  get('SELECT COUNT(*) AS n FROM teams WHERE is_seed = 1 AND resolved = 0').n;
+
+/**
+ * True until a new install has its catalog, every season once, and its seed teams settled.
+ * Costs nothing to ask. A database with no seed rows at all counts as new, whatever else it
+ * holds, since that is exactly what a deleted or first-boot database looks like.
+ */
+export function firstSyncPending() {
+  return (
+    !get('SELECT 1 AS x FROM competitions WHERE is_seed = 1 LIMIT 1')
+    || !leagueCatalogComplete()
+    || pendingCompetitions() > 0
+    || neverSyncedCount() > 0
+    || pendingTeams() > 0
+  );
+}
+
 export async function runAuto({ maxRequests = Infinity, log = () => {} } = {}) {
   const phases = [];
   let spent = 0;
   let stoppedForBudget = false;
   const left = () => maxRequests - spent;
-  const pendingTeams = () =>
-    get('SELECT COUNT(*) AS n FROM teams WHERE is_seed = 1 AND resolved = 0').n;
+
+  // Free and idempotent. A new or deleted database has no seed rows, and without them the
+  // catalog has nothing to be matched against: the run fetched every league and resolved none.
+  const inserted = insertSeedRows();
+  if (inserted.comps || inserted.teams) {
+    log(`inserted ${inserted.comps} competitions, ${inserted.teams} teams`);
+  }
 
   try {
     if (!leagueCatalogComplete()) {
       const catalog = await fetchLeagueCatalog({ maxRequests, log });
       spent += catalog.spent;
       phases.push('catalog');
-      if (catalog.complete) matchCompetitions({ finalize: true, log });
     }
 
-    if (leagueCatalogComplete() && left() > 0) {
+    if (leagueCatalogComplete()) {
+      // Whenever anything is unmatched, not only in the run that finished the catalog, so a
+      // run that stopped between the two picks the matching up next time.
+      if (pendingCompetitions() > 0) matchCompetitions({ finalize: true, log });
+
       // A team is only searched for once every season is in, since until then the next page
       // may well name it for free.
-      if (neverSyncedCount() === 0 && pendingTeams() > 0) {
+      if (left() > 0 && neverSyncedCount() === 0 && pendingTeams() > 0) {
         matchTeamsLocally({ log });
         if (pendingTeams() > 0) {
           const teams = await resolveTeams({ maxRequests: left(), log });
