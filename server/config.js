@@ -18,11 +18,12 @@ const num = (v, fallback) => {
   return Number.isFinite(n) ? n : fallback;
 };
 const bool = (v, fallback) => (v == null || v === '' ? fallback : /^(1|true|yes|on)$/i.test(v));
+const isProd = process.env.NODE_ENV === 'production';
 
 export const config = {
   rootDir,
   env: process.env.NODE_ENV || 'development',
-  isProd: process.env.NODE_ENV === 'production',
+  isProd,
   port: num(process.env.PORT, 3000),
   sessionSecret: process.env.SESSION_SECRET || 'watchsheet-dev-secret',
   databasePath: path.resolve(rootDir, process.env.DATABASE_PATH || './data/watchsheet.db'),
@@ -64,7 +65,9 @@ export const config = {
     // Optional. Resend's receiving side can stay off; replies go wherever this points.
     replyTo: process.env.MAIL_REPLY_TO || '',
     resendApiKey: process.env.RESEND_API_KEY || '',
-    devEcho: bool(process.env.OTP_DEV_ECHO, process.env.NODE_ENV !== 'production'),
+    // Never in production, whatever the variable says: if delivery fell back to the console
+    // there, echoing the code would hand it to whoever typed the address.
+    devEcho: !isProd && bool(process.env.OTP_DEV_ECHO, true),
   },
 
   otp: {

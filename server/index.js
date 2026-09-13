@@ -71,6 +71,13 @@ app.use((err, _req, res, next) => {
  * serve it on a spare port against a throwaway database, with no cron and no timers.
  */
 export function start() {
+  // The fallback and the example value are both public in this repository, so a cookie
+  // signed with either proves nothing. Production refuses to run on them.
+  const secret = process.env.SESSION_SECRET ?? '';
+  if (config.isProd && (secret.length < 32 || ['change-me', 'watchsheet-dev-secret'].includes(secret))) {
+    throw new Error('SESSION_SECRET must be set to a random value of at least 32 characters in production.');
+  }
+
   migrate();
 
   app.listen(config.port, () => {
