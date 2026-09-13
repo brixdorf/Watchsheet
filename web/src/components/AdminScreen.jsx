@@ -61,14 +61,10 @@ export function AdminScreen({ onClose, onFlash }) {
   const runNow = async () => {
     setRunning(true);
     try {
-      const res = await api.runSync();
-      const spent = res.result?.spent ?? 0;
-      onFlash(
-        res.result?.skipped
-          ? `Nothing to do. ${res.result.skipped}.`
-          : `${res.result?.job ?? 'sync'} finished · ${spent} request${spent === 1 ? '' : 's'} spent`,
-        res.result?.skipped ? 'warn' : 'accent',
-      );
+      const result = res.result ?? {};
+      if (result.skipped) onFlash(`Nothing to do. ${result.skipped}.`, 'warn');
+      else if (result.error) onFlash(`Sync failed: ${result.error}`, 'negative');
+      else onFlash(`${result.job ?? 'sync'} finished · ${plural(result.spent ?? 0, 'request')} spent`, 'accent');
       await load();
     } catch (err) {
       onFlash(err instanceof ApiError ? err.message : 'Could not start the sync.', 'negative');
@@ -190,9 +186,11 @@ export function AdminScreen({ onClose, onFlash }) {
               <Line
                 label="Schedule"
                 value={
-                  status.schedule.enabled
-                    ? `hourly · ${status.schedule.slicePerTick} requests a tick`
-                    : 'off'
+                  !status.schedule.enabled
+                    ? 'off'
+                    : status.schedule.keyRejected
+                      ? 'paused · API key rejected'
+                      : `hourly · ${status.schedule.slicePerTick} requests a tick`
                 }
               />
               <Line label="Next run" value={status.schedule.nextRun ? until(status.schedule.nextRun) : 'not scheduled'} />
@@ -200,7 +198,7 @@ export function AdminScreen({ onClose, onFlash }) {
                 label="Last run"
                 value={
                   status.lastRun
-                    ? `${status.lastRun.job} · ${plural(status.lastRun.spent ?? 0, 'request')} · ${ago(status.lastRun.at)}`
+                    ? `${status.lastRun.error ? 'failed' : status.lastRun.job} · ${plural(status.lastRun.spent ?? 0, 'request')} · ${ago(status.lastRun.at)}`
                     : 'not yet this boot'
                 }
               />
@@ -210,7 +208,7 @@ export function AdminScreen({ onClose, onFlash }) {
             <button
               type="button"
               onClick={runNow}
-              disabled={running || status.budget.remaining < 1}
+              disabled={running || status.budget.remaining < 1 || Boolean(status.schedule.keyRejected)}
               className="ws-primary ws-run-sync ws-tap"
               style={{ padding: '10px 16px', fontSize: 14 }}
             >
@@ -221,6 +219,9 @@ export function AdminScreen({ onClose, onFlash }) {
               <div style={{ fontSize: 12.5, color: 'var(--warn)', marginTop: 10 }}>
                 Today&apos;s budget is spent. It resets at midnight UTC.
               </div>
+            )}
+            {status.lastRun?.error && (
+              <div style={{ fontSize: 12.5, color: 'var(--neg)', marginTop: 10 }}>{status.lastRun.error}</div>
             )}
           </div>
 
