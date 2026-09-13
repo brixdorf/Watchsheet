@@ -11,17 +11,15 @@ const logoPng = () => (logo ??= readFileSync(new URL('./logo.png', import.meta.u
 /**
  * Resend provider: live outbound sending.
  *
- * Deployment shape this is written against: example.com stays on another mail host, which keeps the
- * apex MX records and receives mail, while Resend sends from the mail.example.com
- * subdomain. Resend's DKIM, SPF and bounce MX all live under that subdomain, so none of them
- * touch another mail host's records on the apex.
+ * MAIL_FROM has to be on a domain verified in the Resend account. A sending subdomain keeps
+ * Resend's DKIM, SPF and bounce MX records apart from whatever already receives mail on the
+ * apex, so the two never need merging.
  *
- * Resend is used for sending only; its receiving side is deliberately not enabled. Replies
- * to a sign-in code are therefore pointed at the another mail host inbox with the reply-to header, which
- * config defaults to hi@example.com.
+ * Resend is used for sending only, and its receiving side can stay off. Replies to a sign-in
+ * code go wherever MAIL_REPLY_TO points; without it the email says nothing about replying.
  *
- * Nothing here runs until RESEND_API_KEY is set (the sender has a default): `configured`
- * stays false and the factory falls back to console delivery rather than failing sign-in.
+ * Nothing here runs until RESEND_API_KEY and MAIL_FROM are both set: `configured` stays false
+ * and the factory falls back to console delivery rather than failing sign-in.
  */
 
 export class NotConfiguredError extends Error {

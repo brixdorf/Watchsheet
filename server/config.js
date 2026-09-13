@@ -34,8 +34,8 @@ export const config = {
   trustProxyHops: num(process.env.TRUST_PROXY_HOPS, 2),
 
   // Who may open the admin screen. Kept in the environment rather than on the user row,
-  // so access is a config change and a copied database grants nothing.
-  adminEmails: (process.env.ADMIN_EMAILS || 'admin@example.com')
+  // so access is a config change and a copied database grants nothing. Unset means nobody.
+  adminEmails: (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
@@ -55,15 +55,14 @@ export const config = {
   },
 
   mail: {
-    // A Resend key is the only thing that has to be supplied to send real mail: with one set
-    // and no explicit MAIL_PROVIDER, Resend is used. MAIL_PROVIDER=console still forces local
-    // delivery, which is how to test the flow on a machine that holds a live key.
+    // With a Resend key set and no explicit MAIL_PROVIDER, Resend is used. MAIL_PROVIDER=console
+    // still forces local delivery, which is how to test the flow on a machine that holds a live key.
     provider:
       process.env.MAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'console'),
-    // The subdomain verified at Resend, so its SPF and DKIM sit apart from another mail host's on the apex.
-    from: process.env.MAIL_FROM || 'Watchsheet <auth@mail.example.com>',
-    // Resend only sends here, by choice, so replies are pointed at the another mail host inbox instead.
-    replyTo: process.env.MAIL_REPLY_TO || 'hi@example.com',
+    // Must be on a domain verified in the Resend account, so there is no default to fall back on.
+    from: process.env.MAIL_FROM || '',
+    // Optional. Resend's receiving side can stay off; replies go wherever this points.
+    replyTo: process.env.MAIL_REPLY_TO || '',
     resendApiKey: process.env.RESEND_API_KEY || '',
     devEcho: bool(process.env.OTP_DEV_ECHO, process.env.NODE_ENV !== 'production'),
   },

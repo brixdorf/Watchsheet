@@ -81,9 +81,9 @@ defaults.
 | --- | --- |
 | `SESSION_SECRET` | Signs session cookies. Set a long random value in production. |
 | `HIGHLIGHTLY_API_KEY` | Fixture data. Without it the sync stays idle. |
-| `RESEND_API_KEY` | Sends sign-in codes by email. Without it, codes are only printed locally. |
-| `MAIL_FROM`, `MAIL_REPLY_TO` | Sender and reply-to addresses. The sender must be on a domain verified in your Resend account; the defaults belong to the original deployment. |
-| `ADMIN_EMAILS` | Comma-separated addresses that can open the admin screen. |
+| `RESEND_API_KEY`, `MAIL_FROM` | Send sign-in codes by email. The sender must be on a domain verified in your Resend account. Without a key, codes are only printed locally. |
+| `MAIL_REPLY_TO` | Optional. Where replies to a sign-in email go. |
+| `ADMIN_EMAILS` | Comma-separated addresses that can open the admin screen. Nobody can until it is set. |
 | `DATABASE_PATH` | Where the SQLite file lives. Default `./data/watchsheet.db`. |
 | `TRUST_PROXY_HOPS` | Number of reverse proxies in front of the app, so rate limits see the real client address. |
 | `HIGHLIGHTLY_DAILY_BUDGET`, `SYNC_SLICE` | Requests allowed per day, and spent per hourly run. |
@@ -109,4 +109,3 @@ defaults.
 - **One instance.** The database and the sync schedule both live in the process.
 - **HTTPS.** Session cookies are marked secure in production.
 - **Proxy count.** Set `TRUST_PROXY_HOPS` to match the proxies in front of the app.
-

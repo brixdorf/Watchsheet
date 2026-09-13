@@ -68,7 +68,7 @@ function escapeHtml(value) {
   );
 }
 
-/** First name only: "Hi Sam Raj Sharma," reads like a form letter. */
+/** First name only: "Hi Maria del Carmen Ruiz," reads like a form letter. */
 function firstName(name) {
   const first = String(name ?? '').trim().split(/\s+/)[0];
   return first && first.length <= 24 ? escapeHtml(first) : '';
