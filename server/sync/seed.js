@@ -313,9 +313,12 @@ export async function runSeed({ maxRequests = Infinity, log = () => {} } = {}) {
   try {
     const leagues = await fetchLeagueCatalog({ maxRequests: maxRequests - spent, log });
     spent += leagues.spent;
-    matchCompetitions({ finalize: leagues.complete, log });
 
     if (leagues.complete) {
+      // Only against the whole catalog. A match is kept for good, and on a partial one the right
+      // league may simply not be fetched yet, so the relaxed pass used to settle for the wrong
+      // country: the Indian Super League came out as China's Super League.
+      matchCompetitions({ finalize: true, log });
       const teams = await resolveTeams({ maxRequests: maxRequests - spent, log });
       spent += teams.spent;
     }
