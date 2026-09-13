@@ -1,4 +1,5 @@
-import { get, run } from '../db/index.js';
+import { createHash } from 'node:crypto';
+import { get, getState, run, setState } from '../db/index.js';
 import { config } from '../config.js';
 
 /**
@@ -17,7 +18,33 @@ export function dayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+const KEY_STATE = 'budget.key';
+const fingerprint = (apiKey) => createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
+
+/**
+ * The ledger describes one key's allowance. Highlightly counts per key, so after a switch the
+ * day's numbers, a provider-reported 0 included, belong to the old key and would hold the guard
+ * shut until midnight UTC. Only a recorded, different key clears anything; the first key an
+ * install sees is simply recorded. Should the new key share the old allowance after all, the
+ * provider's header on the first response brings the guard back into line.
+ */
+export function rebaseLedgerForKey(apiKey, day = dayKey()) {
+  if (!apiKey) return;
+  const current = fingerprint(apiKey);
+  const recorded = getState(KEY_STATE);
+  if (recorded === current) return;
+  if (recorded) run('DELETE FROM api_usage WHERE day = ?', day);
+  setState(KEY_STATE, current);
+}
+
+// The key is only read at startup, so once per process is enough.
+let keyChecked = false;
+
 export function usageFor(day = dayKey()) {
+  if (!keyChecked) {
+    keyChecked = true;
+    rebaseLedgerForKey(config.highlightly.apiKey);
+  }
   return (
     get('SELECT * FROM api_usage WHERE day = ?', day) || {
       day,
