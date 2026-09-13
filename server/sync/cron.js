@@ -3,15 +3,15 @@ import { config } from '../config.js';
 import { remaining, usageFor } from './budget.js';
 import { AuthError } from './client.js';
 import { runSync } from './fixtures.js';
-import { runSeed, seedStatus } from './seed.js';
+import { runAuto } from './auto.js';
+import { runSeed } from './seed.js';
 
 /**
  * Hourly background sync.
  *
  * Each tick spends at most SYNC_SLICE requests, so the schedule cannot outrun the daily
- * budget however often it fires, and the budget guard is the hard stop regardless. The
- * seed takes priority while it is incomplete, because the fixture rotation is driven by
- * resolved competitions and has nothing to work with until seeding finishes.
+ * budget however often it fires, and the budget guard is the hard stop regardless. What a
+ * tick does on a new install, and in what order, is set out in auto.js.
  */
 
 /** Five past every hour, so a restart on the hour does not collide with the first tick. */
@@ -40,16 +40,17 @@ export async function tick({ slice = config.sync.slice, job = 'auto' } = {}) {
   const startedAt = Date.now();
   const spentBefore = usageFor().requests;
   try {
-    // 'auto' is what the schedule uses: finish seeding first, because the rotation has
-    // no competitions to work through until it does.
-    const seeding = job === 'seed' || (job === 'auto' && !seedStatus().complete);
-    const result = seeding
-      ? await runSeed({ maxRequests: budget })
-      : await runSync({ maxRequests: budget });
+    // 'auto' is what the schedule and the admin button use; auto.js decides what it covers.
+    const result =
+      job === 'seed'
+        ? await runSeed({ maxRequests: budget })
+        : job === 'sync'
+          ? await runSync({ maxRequests: budget })
+          : await runAuto({ maxRequests: budget });
 
     last = {
       at: startedAt,
-      job: seeding ? 'seed' : 'sync',
+      job: result.job ?? job,
       spent: result.spent,
       stoppedForBudget: result.stoppedForBudget,
     };

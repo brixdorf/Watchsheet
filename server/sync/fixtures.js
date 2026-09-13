@@ -205,15 +205,31 @@ export async function refreshRecent({ maxRequests = Infinity, log = () => {} } =
 /* Lane A: full-season rotation                                               */
 /* -------------------------------------------------------------------------- */
 
-/** Competitions to re-pull, least recently completed first. Never-synced rows lead. */
+/**
+ * Competitions to re-pull. Never-synced rows lead, and among those the ones someone follows and
+ * then the most popular, so a new install's feed fills in the order people will look at it.
+ * After that, least recently completed first.
+ */
 export function rotationQueue() {
   return all(
-    `SELECT * FROM competitions
-      WHERE resolved = 1 AND provider_id IS NOT NULL
-      ORDER BY (last_full_sync_at IS NULL) DESC,
-               COALESCE(last_full_sync_at, 0) ASC,
-               id ASC`,
+    `SELECT c.* FROM competitions c
+      WHERE c.resolved = 1 AND c.provider_id IS NOT NULL
+      ORDER BY (c.last_full_sync_at IS NULL) DESC,
+               CASE WHEN c.last_full_sync_at IS NULL THEN
+                 EXISTS (SELECT 1 FROM follows f WHERE f.kind = 'competition' AND f.entity_id = c.id)
+               END DESC,
+               CASE WHEN c.last_full_sync_at IS NULL THEN c.popularity END DESC,
+               COALESCE(c.last_full_sync_at, 0) ASC,
+               c.id ASC`,
   );
+}
+
+/** Competitions whose season has never been pulled in full. While any remain, the install is new. */
+export function neverSyncedCount() {
+  return get(
+    `SELECT COUNT(*) AS n FROM competitions
+      WHERE resolved = 1 AND provider_id IS NOT NULL AND last_full_sync_at IS NULL`,
+  ).n;
 }
 
 /**

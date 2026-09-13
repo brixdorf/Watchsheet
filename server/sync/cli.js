@@ -1,5 +1,6 @@
 import { migrate } from '../db/migrate.js';
 import { isMain } from '../lib/ismain.js';
+import { runAuto } from './auto.js';
 import { budgetStatus, remaining } from './budget.js';
 import { fixtureStatus, runSync } from './fixtures.js';
 import { runSeed, seedStatus } from './seed.js';
@@ -7,8 +8,9 @@ import { runSeed, seedStatus } from './seed.js';
 /**
  * Command line entry point for the two background jobs.
  *
- *   npm run seed                     resolve the seed list against the provider
- *   npm run sync                     refresh recent scores, then advance the rotation
+ *   npm run seed                     resolve the seed list, searching for every team
+ *   npm run sync                     the scheduled run: on a new install the league catalog and
+ *                                    every season first, then recent scores and the rotation
  *   npm run sync -- --max=10         cap the run at ten requests
  *   npm run sync -- --season=2025    rotate a past season instead of the current one
  *   npm run sync:status              spend, seed progress and fixture counts
@@ -83,17 +85,12 @@ async function main() {
   }
 
   if (command === 'sync') {
-    if (!seedStatus().complete) {
-      console.log('Seed is incomplete. Run `npm run seed` first.\n');
-      printStatus();
-      return;
-    }
     console.log(`Syncing (up to ${max} requests, ${remaining()} left today)\n`);
-    const res = await runSync({
-      maxRequests: max,
-      season: args.season ? Number(args.season) : null,
-      log,
-    });
+    // A past season is the rotation on its own. Otherwise this is the scheduled run, which takes
+    // a new install through the catalog and every season before anything else.
+    const res = args.season
+      ? await runSync({ maxRequests: max, season: Number(args.season), log })
+      : await runAuto({ maxRequests: max, log });
     console.log(`\nSpent ${res.spent} requests.`);
     printStatus();
     return;

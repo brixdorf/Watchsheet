@@ -46,8 +46,10 @@ The sync is built around the free tier's 100 requests a day:
 - Work stops cleanly when the day's budget runs out.
 - The next run resumes where the last one stopped.
 
-On a new install the sync first resolves a starting list of teams and competitions, then
-works through each competition's season.
+On a new install the sync fetches the league catalog, then each competition's season, with
+followed and popular ones first. Teams are taken from those fixtures at no extra cost, and
+only teams no fixture mentions are searched for, so the first day's requests are enough for
+fixtures to show up.
 
 Stack: Node (the built-in `node:sqlite`, so there is no native build step), Express 5, React 19
 and Vite 8.
@@ -62,15 +64,15 @@ Requirements:
 ```bash
 npm install
 cp .env.example .env    # add HIGHLIGHTLY_API_KEY
-npm run seed            # resolve the starting catalog (about 65 requests)
+npm run sync            # first sync: league catalog, then fixtures (about 70 requests)
 npm run dev             # API on :3000, app on http://localhost:5173
 ```
 
 Without a Resend key, sign-in codes are printed to the server output and shown on the
 sign-in screen, so the whole flow works locally with no mail setup.
 
-After the seed, fixtures fill in over the next day or two as the hourly sync works through
-each competition. `npm run sync` does a run by hand.
+Skip that step and the hourly sync, or the sync button on the admin screen, does the same
+work in smaller runs.
 
 ## Configuration
 
@@ -94,8 +96,8 @@ defaults.
 | --- | --- |
 | `npm run dev` | API and web dev server together |
 | `npm run build` / `npm start` | Production build, then serve the API and the built app on one port |
-| `npm run seed` | Resolve the starting teams and competitions (resumable) |
-| `npm run sync` | Refresh recent scores, then continue the season sync (`-- --max=10` caps a run) |
+| `npm run seed` | Resolve the starting teams and competitions only, searching for each team (resumable) |
+| `npm run sync` | The scheduled run: catalog and fixtures on a new install, then recent scores and the season rotation (`-- --max=10` caps a run) |
 | `npm run sync:status` | Today's spend, seed progress, fixture counts |
 | `npm test` | Test suite. Uses a throwaway database, a stand-in provider and no real mail |
 

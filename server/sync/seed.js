@@ -4,6 +4,7 @@ import { competitionPopularity, teamPopularity } from '../db/popularity.js';
 import { countryMatches, pickBest } from '../lib/names.js';
 import { BudgetExhaustedError, remaining } from './budget.js';
 import { listLeagues, listTeams, rowsOf, totalOf } from './client.js';
+import { neverSyncedCount } from './fixtures.js';
 import { normalizeLeague, normalizeTeam } from './normalize.js';
 
 /**
@@ -209,6 +210,78 @@ export function matchCompetitions({ finalize = false, log = () => {} } = {}) {
 /* Step 3: resolve teams, one lookup each.                                    */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Points a seed team at a provider id. A fixture may already have given that id a row of its
+ * own; if so, its matches and follows move onto the seed row, which keeps its id, and the
+ * duplicate goes. Returns false, changing nothing, when another seed team already holds the id.
+ */
+function attachTeam(team, { providerId, logoUrl = null, isNational = null }) {
+  return tx(() => {
+    const dupe = get(
+      'SELECT id, is_seed, logo_url FROM teams WHERE provider_id = ? AND id <> ?',
+      providerId,
+      team.id,
+    );
+    if (dupe?.is_seed) return false;
+    if (dupe) {
+      run('UPDATE matches SET home_team_id = ? WHERE home_team_id = ?', team.id, dupe.id);
+      run('UPDATE matches SET away_team_id = ? WHERE away_team_id = ?', team.id, dupe.id);
+      run("UPDATE OR IGNORE follows SET entity_id = ? WHERE kind = 'team' AND entity_id = ?", team.id, dupe.id);
+      run("DELETE FROM follows WHERE kind = 'team' AND entity_id = ?", dupe.id);
+      run('DELETE FROM teams WHERE id = ?', dupe.id);
+    }
+    run(
+      `UPDATE teams SET provider_id = ?, name = ?, logo_url = COALESCE(?, ?, logo_url),
+              is_national = COALESCE(?, is_national), resolved = 1
+        WHERE id = ?`,
+      providerId,
+      team.seed_name,
+      logoUrl,
+      dupe?.logo_url ?? null,
+      isNational,
+      team.id,
+    );
+    return true;
+  });
+}
+
+/**
+ * Resolves seed teams against teams already known from synced fixtures. Costs nothing.
+ *
+ * Every fixture names both sides with the provider's ids, so once a competition's season is in,
+ * its clubs are in the table under the provider's own names and need no search. On the data
+ * from before the reset that covered 40 of the 46 seed teams.
+ *
+ * `strict` accepts only an exact name or alias, for while some seasons are still unpulled: with
+ * LaLiga not in yet, "Barcelona" would otherwise settle for Ecuador's Barcelona SC from the
+ * Libertadores on the core-name tier. National sides always need an exact match, because a
+ * fixture row does not say whether a team is a national one.
+ */
+export function matchTeamsLocally({ strict = false, log = () => {} } = {}) {
+  const pending = all('SELECT * FROM teams WHERE is_seed = 1 AND resolved = 0 ORDER BY id');
+  if (!pending.length) return { resolved: 0 };
+  let candidates = all(
+    'SELECT id, provider_id, name, logo_url FROM teams WHERE is_seed = 0 AND provider_id IS NOT NULL',
+  );
+  let resolved = 0;
+
+  for (const team of pending) {
+    const seedDef = SEED_TEAMS.find((t) => t.name === team.seed_name) || {};
+    const seed = { name: team.seed_name, aliases: seedDef.aliases };
+    const best = pickBest(seed, candidates);
+    if (!best || best.score < (strict || team.is_national ? 95 : 85)) continue;
+    // Two rows that fit equally well is a guess, whatever the tier.
+    const runnerUp = pickBest(seed, candidates, (row) => (row === best.row ? -1 : 0));
+    if (runnerUp && runnerUp.score === best.score) continue;
+
+    if (!attachTeam(team, { providerId: best.row.provider_id, logoUrl: best.row.logo_url })) continue;
+    candidates = candidates.filter((c) => c !== best.row);
+    resolved++;
+    log(`team  ok  ${team.seed_name} -> ${best.row.name} #${best.row.provider_id} (from fixtures)`);
+  }
+  return { resolved };
+}
+
 export async function resolveTeams({ maxRequests = Infinity, log = () => {} } = {}) {
   const pending = all('SELECT * FROM teams WHERE is_seed = 1 AND resolved = 0 ORDER BY id');
   let spent = 0;
@@ -241,17 +314,18 @@ export async function resolveTeams({ maxRequests = Infinity, log = () => {} } = 
     }
 
     if (match) {
-      run(
-        `UPDATE teams SET provider_id = ?, name = ?, logo_url = ?, is_national = ?, resolved = 1
-         WHERE id = ?`,
-        match.row.providerId,
-        team.seed_name,
-        match.row.logoUrl,
-        match.row.isNational ? 1 : 0,
-        team.id,
-      );
-      resolved++;
-      log(`team  ok  ${team.seed_name} -> ${match.row.name} #${match.row.providerId}`);
+      const attached = attachTeam(team, {
+        providerId: match.row.providerId,
+        logoUrl: match.row.logoUrl,
+        isNational: match.row.isNational ? 1 : 0,
+      });
+      if (attached) {
+        resolved++;
+        log(`team  ok  ${team.seed_name} -> ${match.row.name} #${match.row.providerId}`);
+      } else {
+        run('UPDATE teams SET resolved = -1 WHERE id = ?', team.id);
+        log(`team  --  ${team.seed_name} -> #${match.row.providerId}, which another seed team holds`);
+      }
     } else if (tried === queries.length) {
       run('UPDATE teams SET resolved = -1 WHERE id = ?', team.id);
       log(`team  --  ${team.seed_name} not found`);
@@ -319,6 +393,8 @@ export async function runSeed({ maxRequests = Infinity, log = () => {} } = {}) {
       // league may simply not be fetched yet, so the relaxed pass used to settle for the wrong
       // country: the Indian Super League came out as China's Super League.
       matchCompetitions({ finalize: true, log });
+      // Anything fixtures have already named needs no search.
+      matchTeamsLocally({ strict: neverSyncedCount() > 0, log });
       const teams = await resolveTeams({ maxRequests: maxRequests - spent, log });
       spent += teams.spent;
     }
