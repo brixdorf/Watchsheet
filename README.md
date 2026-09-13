@@ -26,7 +26,7 @@ npm run build               # builds web/dist
 npm start                   # Express serves the API and the built app on :3000
 ```
 
-Requires Node 22.12 or newer: the database layer uses the built-in `node:sqlite` module, so
+Requires Node 22.13 or newer: the database layer uses the built-in `node:sqlite` module, so
 there is no native build step and no compiler needed, and `.env` is read by Node itself.
 
 ### From your phone

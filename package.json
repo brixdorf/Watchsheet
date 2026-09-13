@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A personal football match-tracking logbook.",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.13"
   },
   "workspaces": [
     "server",
